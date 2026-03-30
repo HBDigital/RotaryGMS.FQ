@@ -132,101 +132,97 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold text-gray-900">Admin Dashboard</h1>
-            <p className="text-gray-600 mt-2">Manage delegate registrations and payments</p>
-          </div>
-          <div className="flex space-x-4">
-            <button
-              onClick={handleExportCSV}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-            >
-              Export CSV
-            </button>
-            <a
-              href="/"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-            >
-              Registration Form
-            </a>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors"
-            >
-              Logout
-            </button>
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 space-y-4 sm:space-y-0">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">Manage registrations and view analytics</p>
+            </div>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+              <a
+                href="/"
+                className="bg-blue-600 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center"
+              >
+                Registration Form
+              </a>
+              <button
+                onClick={handleLogout}
+                className="bg-red-600 text-white px-4 sm:px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
         {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Registrations</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{summary.totalRegistrations}</p>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-3 sm:mb-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Total Registrations</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.totalRegistrations}</p>
                 </div>
-                <div className="bg-blue-100 p-3 rounded-full">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-blue-100 p-2 sm:p-3 rounded-full">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Delegates</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{summary.totalDelegates}</p>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-3 sm:mb-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Total Delegates</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.totalDelegates}</p>
                 </div>
-                <div className="bg-purple-100 p-3 rounded-full">
-                  <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-purple-100 p-2 sm:p-3 rounded-full">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Total Revenue</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">₹{summary.totalAmount.toLocaleString()}</p>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-3 sm:mb-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Total Revenue</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">₹{summary.totalAmount.toLocaleString()}</p>
                 </div>
-                <div className="bg-green-100 p-3 rounded-full">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-green-100 p-2 sm:p-3 rounded-full">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Pending Payments</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{summary.pendingPayments}</p>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-3 sm:mb-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Pending Payments</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.pendingPayments}</p>
                 </div>
-                <div className="bg-yellow-100 p-3 rounded-full">
-                  <svg className="w-8 h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-yellow-100 p-2 sm:p-3 rounded-full">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-600">Failed Payments</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">{summary.failedPayments}</p>
+            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                <div className="mb-3 sm:mb-0">
+                  <p className="text-xs sm:text-sm text-gray-600">Failed Payments</p>
+                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.failedPayments}</p>
                 </div>
-                <div className="bg-red-100 p-3 rounded-full">
-                  <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-red-100 p-2 sm:p-3 rounded-full">
+                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
@@ -265,7 +261,30 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'overview' && (
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
-                <div className="overflow-x-auto">
+                {/* Mobile Card View */}
+                <div className="block sm:hidden space-y-4">
+                  {recentTransactions.map((transaction) => (
+                    <div key={transaction.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{transaction.name}</h3>
+                          <p className="text-sm text-gray-600">{transaction.club_name}</p>
+                        </div>
+                        <div className="text-right">
+                          {getStatusBadge(transaction.status)}
+                          <p className="text-lg font-bold text-gray-900 mt-1">₹{transaction.amount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p><span className="font-medium">ID:</span> {transaction.id}</p>
+                        <p><span className="font-medium">Payment ID:</span> {transaction.razorpay_payment_id || '-'}</p>
+                        <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop Table View */}
+                <div className="hidden sm:block overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
@@ -305,8 +324,8 @@ const AdminDashboard: React.FC = () => {
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">All Registrations</h2>
                 <div className="space-y-4">
                   {registrations.map((registration) => (
-                    <div key={registration.id} className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-start mb-4">
+                    <div key={registration.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-3 sm:space-y-0">
                         <div>
                           <h3 className="text-lg font-semibold text-gray-900">{registration.name}</h3>
                           <p className="text-sm text-gray-600">{registration.email} • {registration.phone}</p>
@@ -320,7 +339,7 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div className="bg-gray-50 rounded p-3">
                           <p className="text-xs text-gray-500">Delegates</p>
                           <p className="text-lg font-semibold text-gray-900">{registration.delegate_count}</p>
@@ -333,7 +352,7 @@ const AdminDashboard: React.FC = () => {
 
                       <div className="border-t border-gray-200 pt-4">
                         <h4 className="text-sm font-semibold text-gray-700 mb-2">Delegate Details:</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-2">
                           {registration.delegates.map((delegate, index) => (
                             <div key={index} className="bg-blue-50 rounded p-3">
                               <p className="text-sm font-medium text-gray-900">{delegate.delegate_name}</p>
@@ -345,7 +364,7 @@ const AdminDashboard: React.FC = () => {
 
                       {registration.razorpay_payment_id && (
                         <div className="mt-4 pt-4 border-t border-gray-200">
-                          <p className="text-xs text-gray-500">Payment ID: <span className="font-mono">{registration.razorpay_payment_id}</span></p>
+                          <p className="text-xs text-gray-500 break-all">Payment ID: <span className="font-mono">{registration.razorpay_payment_id}</span></p>
                         </div>
                       )}
                     </div>

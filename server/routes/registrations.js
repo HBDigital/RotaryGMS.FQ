@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { createOrder, verifyPaymentSignature } = require('../utils/razorpay');
+const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razorpay');
 
 router.post('/registrations', async (req, res) => {
   try {
@@ -100,12 +100,142 @@ router.post('/verify-payment', async (req, res) => {
       return res.status(400).json({ error: 'Missing payment details' });
     }
 
+    // Step 1: Verify the payment signature
     const isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
 
-    if (isValid) {
+    if (!isValid) {
+      // Log failed signature verification
+      console.error(`Payment signature verification failed for order ${razorpay_order_id}`);
+      
+      const updateTransaction = db.prepare(`
+        UPDATE transactions 
+        SET status = 'failed', 
+            raw_response = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE razorpay_order_id = ?
+      `);
+      await updateTransaction.run(JSON.stringify({
+        error: 'Signature verification failed',
+        received: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+      }), razorpay_order_id);
+
       const updateRegistration = db.prepare(`
         UPDATE registrations 
-        SET payment_status = 'success', razorpay_payment_id = ?
+        SET payment_status = 'failed'
+        WHERE id = ? AND razorpay_order_id = ?
+      `);
+      await updateRegistration.run(registrationId, razorpay_order_id);
+
+      return res.status(400).json({
+        success: false,
+        error: 'Payment verification failed - Invalid signature',
+      });
+    }
+
+    // Step 2: Fetch the registration to verify order details
+    const registration = await db.prepare('SELECT * FROM registrations WHERE id = ? AND razorpay_order_id = ?').get(registrationId, razorpay_order_id);
+
+    if (!registration) {
+      console.error(`Registration not found for ID ${registrationId} and order ${razorpay_order_id}`);
+      return res.status(404).json({ error: 'Registration not found or order mismatch' });
+    }
+
+    // Step 3: Fetch payment details from Razorpay to verify amount and status
+    try {
+      const payment = await razorpay.payments.fetch(razorpay_payment_id);
+      
+      // Step 4: Verify the payment amount matches our records
+      const expectedAmount = registration.total_amount * 100; // Convert to paise
+      if (payment.amount !== expectedAmount) {
+        console.error(`Amount mismatch: Expected ${expectedAmount}, Received ${payment.amount}`);
+        
+        const updateTransaction = db.prepare(`
+          UPDATE transactions 
+          SET status = 'failed', 
+              raw_response = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE razorpay_order_id = ?
+        `);
+        await updateTransaction.run(JSON.stringify({
+          error: 'Amount mismatch',
+          expected: expectedAmount,
+          received: payment.amount,
+          payment_details: payment
+        }), razorpay_order_id);
+
+        const updateRegistration = db.prepare(`
+          UPDATE registrations 
+          SET payment_status = 'failed'
+          WHERE id = ?
+        `);
+        await updateRegistration.run(registrationId);
+
+        return res.status(400).json({
+          success: false,
+          error: 'Payment amount mismatch',
+        });
+      }
+
+      // Step 5: Verify the payment is captured/completed
+      if (payment.status !== 'captured') {
+        console.error(`Payment not captured. Status: ${payment.status}`);
+        
+        const updateTransaction = db.prepare(`
+          UPDATE transactions 
+          SET status = 'failed', 
+              raw_response = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE razorpay_order_id = ?
+        `);
+        await updateTransaction.run(JSON.stringify({
+          error: 'Payment not captured',
+          status: payment.status,
+          payment_details: payment
+        }), razorpay_order_id);
+
+        const updateRegistration = db.prepare(`
+          UPDATE registrations 
+          SET payment_status = 'failed'
+          WHERE id = ?
+        `);
+        await updateRegistration.run(registrationId);
+
+        return res.status(400).json({
+          success: false,
+          error: 'Payment not completed',
+        });
+      }
+
+      // Step 6: Verify the payment belongs to the correct order
+      if (payment.order_id !== razorpay_order_id) {
+        console.error(`Order ID mismatch: Expected ${razorpay_order_id}, Received ${payment.order_id}`);
+        
+        const updateTransaction = db.prepare(`
+          UPDATE transactions 
+          SET status = 'failed', 
+              raw_response = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE razorpay_order_id = ?
+        `);
+        await updateTransaction.run(JSON.stringify({
+          error: 'Order ID mismatch',
+          expected: razorpay_order_id,
+          received: payment.order_id,
+          payment_details: payment
+        }), razorpay_order_id);
+
+        return res.status(400).json({
+          success: false,
+          error: 'Order verification failed',
+        });
+      }
+
+      // Step 7: All verifications passed - update records
+      const updateRegistration = db.prepare(`
+        UPDATE registrations 
+        SET payment_status = 'success', 
+            razorpay_payment_id = ?,
+            updated_at = CURRENT_TIMESTAMP
         WHERE id = ? AND razorpay_order_id = ?
       `);
       await updateRegistration.run(razorpay_payment_id, registrationId, razorpay_order_id);
@@ -115,36 +245,61 @@ router.post('/verify-payment', async (req, res) => {
         SET status = 'success', 
             razorpay_payment_id = ?, 
             razorpay_signature = ?,
+            raw_response = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE razorpay_order_id = ?
       `);
-      await updateTransaction.run(razorpay_payment_id, razorpay_signature, razorpay_order_id);
+      await updateTransaction.run(
+        razorpay_payment_id, 
+        razorpay_signature, 
+        JSON.stringify({
+          verified: true,
+          payment_details: payment,
+          registration_details: registration,
+          verification_timestamp: new Date().toISOString()
+        }), 
+        razorpay_order_id
+      );
+
+      console.log(`Payment successfully verified: Registration ${registrationId}, Order ${razorpay_order_id}, Payment ${razorpay_payment_id}, Amount ${payment.amount}`);
 
       res.status(200).json({
         success: true,
         message: 'Payment verified successfully',
+        verification_details: {
+          registration_id: registrationId,
+          order_id: razorpay_order_id,
+          payment_id: razorpay_payment_id,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: payment.status,
+          method: payment.method,
+          email: payment.email,
+          contact: payment.contact
+        }
       });
-    } else {
+
+    } catch (fetchError) {
+      console.error('Error fetching payment details from Razorpay:', fetchError);
+      
       const updateTransaction = db.prepare(`
         UPDATE transactions 
-        SET status = 'failed',
+        SET status = 'failed', 
+            raw_response = ?,
             updated_at = CURRENT_TIMESTAMP
         WHERE razorpay_order_id = ?
       `);
-      await updateTransaction.run(razorpay_order_id);
+      await updateTransaction.run(JSON.stringify({
+        error: 'Failed to fetch payment details',
+        fetch_error: fetchError.message
+      }), razorpay_order_id);
 
-      const updateRegistration = db.prepare(`
-        UPDATE registrations 
-        SET payment_status = 'failed'
-        WHERE id = ? AND razorpay_order_id = ?
-      `);
-      await updateRegistration.run(registrationId, razorpay_order_id);
-
-      res.status(400).json({
+      res.status(500).json({
         success: false,
-        error: 'Payment verification failed',
+        error: 'Payment verification incomplete - Could not fetch payment details',
       });
     }
+
   } catch (error) {
     console.error('Error verifying payment:', error);
     res.status(500).json({ error: 'Failed to verify payment' });

@@ -128,6 +128,8 @@ const RegistrationForm: React.FC = () => {
         order_id: orderId,
         handler: async function (response: any) {
           try {
+            console.log('Payment response received:', response);
+            
             const verifyResponse = await axios.post(`${API_URL}/verify-payment`, {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
@@ -135,20 +137,47 @@ const RegistrationForm: React.FC = () => {
               registrationId,
             });
 
+            console.log('Verification response:', verifyResponse.data);
+
             if (verifyResponse.data.success) {
+              // Store verification details for success page
+              const verificationData = {
+                paymentId: response.razorpay_payment_id,
+                orderId: response.razorpay_order_id,
+                amount: amount,
+                delegates: formData.delegate_count,
+                verificationDetails: verifyResponse.data.verification_details,
+                registrationData: {
+                  name: formData.name,
+                  email: formData.email,
+                  club_name: formData.club_name,
+                  delegate_count: formData.delegate_count
+                }
+              };
+
               navigate('/payment-success', { 
-                state: { 
-                  paymentId: response.razorpay_payment_id,
-                  amount: amount,
-                  delegates: formData.delegate_count 
-                } 
+                state: verificationData
               });
             } else {
-              navigate('/payment-failure');
+              console.error('Payment verification failed:', verifyResponse.data.error);
+              navigate('/payment-failure', { 
+                state: { 
+                  error: verifyResponse.data.error,
+                  orderId: response.razorpay_order_id,
+                  paymentId: response.razorpay_payment_id
+                } 
+              });
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error('Payment verification error:', error);
-            navigate('/payment-failure');
+            const errorMessage = error.response?.data?.error || 'Payment verification failed';
+            navigate('/payment-failure', { 
+              state: { 
+                error: errorMessage,
+                orderId: response.razorpay_order_id,
+                paymentId: response.razorpay_payment_id
+              } 
+            });
           }
         },
         prefill: {
@@ -202,19 +231,19 @@ const RegistrationForm: React.FC = () => {
   const totalAmount = formData.delegate_count * 1000;
 
   return (
-    <div className="min-h-screen py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen py-4 px-4 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <img src="/rotary-logo.png" alt="Rotary International" className="h-20 mx-auto mb-4" />
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">Rotary 3206, GMS 2026</h1>
-            <p className="text-gray-600">Register your delegates for the event</p>
-            <p className="text-gray-600"><b>Date:</b> 03 May 2026 | <b>Venue:</b> Grant Regent Hotel, Coimbatore</p>
+        <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
+          <div className="text-center mb-6 sm:mb-8">
+            <img src="/rotary-logo.png" alt="Rotary International" className="h-16 sm:h-20 mx-auto mb-4" />
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary 3206, GMS 2026</h1>
+            <p className="text-sm sm:text-base text-gray-600">Register your delegates for the event</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 03 May 2026 | <b>Venue:</b> Grant Regent Hotel, Coimbatore</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold text-gray-800 mb-4">Contact Information</h2>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Contact Information</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -287,10 +316,10 @@ const RegistrationForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-800">Delegate Details</h2>
-                <div className="flex items-center space-x-2">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
+                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Delegate Details</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
                   <label className="text-sm font-medium text-gray-700">Number of Delegates:</label>
                   <select
                     value={formData.delegate_count}
@@ -351,11 +380,11 @@ const RegistrationForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-6 text-white">
-              <div className="flex justify-between items-center">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
                 <div>
                   <p className="text-sm opacity-90">Total Amount</p>
-                  <p className="text-3xl font-bold">₹{totalAmount.toLocaleString()}</p>
+                  <p className="text-2xl sm:text-3xl font-bold">₹{totalAmount.toLocaleString()}</p>
                   <p className="text-sm opacity-90 mt-1">
                     {formData.delegate_count} delegate(s) × ₹1,000 each
                   </p>
@@ -363,7 +392,7 @@ const RegistrationForm: React.FC = () => {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full sm:w-auto bg-white text-blue-600 px-6 sm:px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? 'Processing...' : 'Proceed to Payment'}
                 </button>
