@@ -1,0 +1,27 @@
+{
+  "name": "delegate-registration-app",
+  "version": "1.0.0",
+  "description": "Full-stack delegate registration app with Razorpay payment integration",
+  "main": "server/index.js",
+  "scripts": {
+    "server": "node server/index.js",
+    "client": "cd client && npm start",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "install-all": "npm install && cd client && npm install",
+    "build": "cd client && npm run build"
+  },
+  "keywords": ["delegate", "registration", "razorpay", "payment"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "sql.js": "^1.10.3",
+    "razorpay": "^2.9.2",
+    "json2csv": "^6.0.0-alpha.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
