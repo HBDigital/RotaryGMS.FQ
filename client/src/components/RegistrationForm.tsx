@@ -369,7 +369,7 @@ const RegistrationForm: React.FC = () => {
                           className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                             errors[`delegate_${index}_designation`] ? 'border-red-500' : 'border-gray-300'
                           }`}
-                          placeholder="Delegate designation"
+                          placeholder="President/President-Elect/Secretary"
                         />
                         {errors[`delegate_${index}_designation`] && (
                           <p className="text-red-500 text-sm mt-1">{errors[`delegate_${index}_designation`]}</p>
