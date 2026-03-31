@@ -286,8 +286,24 @@ router.post('/verify-payment', async (req, res) => {
       delegates,
     };
 
-    sendReceiptEmail(notificationData).catch(err => console.error('Email notification failed:', err));
-    sendWhatsAppReceipt(notificationData).catch(err => console.error('WhatsApp notification failed:', err));
+    const updateNotificationStatus = async (emailSent, whatsappSent) => {
+      await db.prepare(`
+        UPDATE registrations SET email_status = ?, whatsapp_status = ? WHERE id = ?
+      `).run(
+        emailSent ? 'sent' : 'failed',
+        whatsappSent ? 'sent' : 'failed',
+        registrationId
+      );
+    };
+
+    Promise.all([
+      sendReceiptEmail(notificationData).catch(err => { console.error('Email notification failed:', err); return false; }),
+      sendWhatsAppReceipt(notificationData).catch(err => { console.error('WhatsApp notification failed:', err); return false; }),
+    ]).then(([emailSent, whatsappSent]) => {
+      updateNotificationStatus(emailSent, whatsappSent).catch(err =>
+        console.error('Failed to update notification status:', err)
+      );
+    });
 
     res.status(200).json({
       success: true,

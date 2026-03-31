@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -37,6 +37,13 @@ const RegistrationForm: React.FC = () => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [clubs, setClubs] = useState<string[]>([]);
+
+  useEffect(() => {
+    axios.get(`${API_URL}/clubs`)
+      .then(res => setClubs(res.data.clubs.map((c: { name: string }) => c.name)))
+      .catch(() => setClubs([]));
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -302,16 +309,22 @@ const RegistrationForm: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Club Name <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
+                  <select
                     name="club_name"
                     value={formData.club_name}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    onChange={(e) => {
+                      setFormData({ ...formData, club_name: e.target.value });
+                      if (errors.club_name) setErrors({ ...errors, club_name: '' });
+                    }}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
                       errors.club_name ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter your club name"
-                  />
+                  >
+                    <option value="">Select your club</option>
+                    {clubs.map((club) => (
+                      <option key={club} value={club}>{club}</option>
+                    ))}
+                  </select>
                   {errors.club_name && <p className="text-red-500 text-sm mt-1">{errors.club_name}</p>}
                 </div>
               </div>
@@ -362,15 +375,22 @@ const RegistrationForm: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Designation <span className="text-red-500">*</span>
                         </label>
-                        <input
-                          type="text"
+                        <select
                           value={delegate.designation}
                           onChange={(e) => handleDelegateChange(index, 'designation', e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
                             errors[`delegate_${index}_designation`] ? 'border-red-500' : 'border-gray-300'
                           }`}
-                          placeholder="President/President-Elect/Secretary"
-                        />
+                        >
+                          <option value="">Select Designation</option>
+                          <option value="President 2025-26">President 2025-26</option>
+                          <option value="President Elect(2026-27)">President Elect(2026-27)</option>
+                          <option value="Treasurer 2026-27">Treasurer 2026-27</option>
+                          <option value="Secretary elect 2026-27">Secretary elect 2026-27</option>
+                          <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
+                          <option value="Member">Member</option>
+                          <option value="Rotaract">Rotaract</option>
+                        </select>
                         {errors[`delegate_${index}_designation`] && (
                           <p className="text-red-500 text-sm mt-1">{errors[`delegate_${index}_designation`]}</p>
                         )}

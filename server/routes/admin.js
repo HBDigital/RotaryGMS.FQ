@@ -112,7 +112,8 @@ router.get('/admin/export-excel', async (req, res) => {
       SELECT 
         r.id, r.receipt_no, r.name, r.email, r.phone, r.club_name,
         r.delegate_count, r.total_amount, r.payment_status,
-        r.razorpay_order_id, r.razorpay_payment_id, r.created_at
+        r.razorpay_order_id, r.razorpay_payment_id, r.created_at,
+        r.email_status, r.whatsapp_status
       FROM registrations r
       WHERE r.payment_status = 'success'
       ORDER BY r.id ASC
@@ -136,6 +137,8 @@ router.get('/admin/export-excel', async (req, res) => {
           'Total Delegates': reg.delegate_count,
           'Amount (₹)': reg.total_amount,
           'Payment Status': reg.payment_status,
+          'Email Status': reg.email_status || 'pending',
+          'WhatsApp Status': reg.whatsapp_status || 'pending',
           'Razorpay Order ID': reg.razorpay_order_id || '',
           'Razorpay Payment ID': reg.razorpay_payment_id || '',
           'Registration Date': reg.created_at,
@@ -165,6 +168,57 @@ router.get('/admin/export-excel', async (req, res) => {
   } catch (error) {
     console.error('Error exporting Excel:', error);
     res.status(500).json({ error: 'Failed to export Excel' });
+  }
+});
+
+// Get all active clubs (public - used by registration form)
+router.get('/clubs', async (req, res) => {
+  try {
+    const clubs = await db.prepare(`SELECT id, name FROM clubs WHERE active = 1 ORDER BY name ASC`).all();
+    res.status(200).json({ success: true, clubs });
+  } catch (error) {
+    console.error('Error fetching clubs:', error);
+    res.status(500).json({ error: 'Failed to fetch clubs' });
+  }
+});
+
+// Admin: add a new club
+router.post('/admin/clubs', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ error: 'Club name is required' });
+    await db.prepare(`INSERT OR IGNORE INTO clubs (name) VALUES (?)`).run(name.trim());
+    res.status(201).json({ success: true, message: 'Club added' });
+  } catch (error) {
+    console.error('Error adding club:', error);
+    res.status(500).json({ error: 'Failed to add club' });
+  }
+});
+
+// Admin: clubs that have NOT registered yet
+router.get('/admin/unregistered-clubs', async (req, res) => {
+  try {
+    const unregistered = await db.prepare(`
+      SELECT c.id, c.name
+      FROM clubs c
+      WHERE c.active = 1
+        AND c.name NOT IN (
+          SELECT DISTINCT r.club_name FROM registrations r WHERE r.payment_status = 'success'
+        )
+      ORDER BY c.name ASC
+    `).all();
+
+    const registered = await db.prepare(`
+      SELECT DISTINCT r.club_name, r.receipt_no, r.delegate_count
+      FROM registrations r
+      WHERE r.payment_status = 'success'
+      ORDER BY r.club_name ASC
+    `).all();
+
+    res.status(200).json({ success: true, unregistered, registered });
+  } catch (error) {
+    console.error('Error fetching unregistered clubs:', error);
+    res.status(500).json({ error: 'Failed to fetch unregistered clubs' });
   }
 });
 

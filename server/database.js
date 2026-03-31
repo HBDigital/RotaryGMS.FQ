@@ -84,6 +84,13 @@ async function initDatabase() {
         FOREIGN KEY (registration_id) REFERENCES registrations(id)
       );
 
+      CREATE TABLE IF NOT EXISTS clubs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL UNIQUE,
+        active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
       CREATE INDEX IF NOT EXISTS idx_registrations_payment_status ON registrations(payment_status);
       CREATE INDEX IF NOT EXISTS idx_delegates_registration_id ON delegates(registration_id);
@@ -96,7 +103,43 @@ async function initDatabase() {
 
     // Migrations - add new columns if they don't exist
     try { db.run('ALTER TABLE registrations ADD COLUMN receipt_no TEXT'); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE registrations ADD COLUMN email_status TEXT DEFAULT 'pending'"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE registrations ADD COLUMN whatsapp_status TEXT DEFAULT 'pending'"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
+
+    // Seed clubs if table is empty
+    const clubCount = db.prepare('SELECT COUNT(*) as count FROM clubs').get();
+    if (clubCount.count === 0) {
+      const clubNames = [
+        'Coimbatore', 'Coimbatore Central', 'Coimbatore East', 'Coimbatore Mid-Town',
+        'Coimbatore North', 'Coimbatore West', 'Palghat', 'Chittur Palghat',
+        'Palakkad Green City', 'Metro Dynamix', 'Coimbatore Phoenix', 'Palakkad ACE',
+        'E-club of Coimbatore Changemakers', 'E-Club of Coimbatore Pride',
+        'Coimbatore Royals', 'Coimbatore Unicorns', 'Palghat East', 'Kovai',
+        'Coimbatore Infra', 'Coimbatore Aram', 'Palakkad Central', 'Coimbatore New Town',
+        'Coimbatore Metropolis', 'Coimbatore South', 'Coimbatore Aalam', 'Ottapalam',
+        'Coimbatore Mitrutva', 'Coimbatore Blossom', 'Coimbatore United', 'Thondamuthur',
+        'Coimbatore Satellite', 'Coimbatore Texcity', 'Mannarghat', 'Coimbatore Saicity',
+        'Coimbatore Uptown', 'Vadakkencherry Malabar', 'Koduvayur', 'Coimbatore Millennium',
+        'Coimbatore Manchester', 'Olavakkode', 'Coimbatore Spectrum', 'Nemmara',
+        'Coimbatore Centennial', 'Coimbatore Aakruthi', 'Coimbatore Heritage', 'Pattambi',
+        'Coimbatore Zenith', 'Coimbatore Gaalaxy', 'Coimbatore Legend', 'Coimbatore Green City',
+        'Coimbatore Cotton City', 'Kovaipudur', 'Coimbatore Wind City', 'Coimbatore Ikons',
+        'Coimbatore Downtown', 'Kalladikode', 'Coimbatore Cyber City', 'Shoranur',
+        'Coimbatore Cosmopolitan', 'Alathur Central', 'Vadakkencherry', 'Sreekrishnapuram',
+        'Palakkad Fort', 'Coimbatore Town', 'Coimbatore Vadavalli', 'Coimbatore Elite',
+        'Coimbatore City', "Coimbatore D'elite", 'Coimbatore Monarks', 'Coimbatore Smart City',
+        'Coimbatore Meridian', 'Coimbatore Industrial City', 'Rotaract Club',
+      ];
+      const insertClub = db.prepare("INSERT OR IGNORE INTO clubs (name) VALUES (?)");
+      for (const name of clubNames) {
+        insertClub.bind([name]);
+        insertClub.step();
+        insertClub.reset();
+      }
+      insertClub.free();
+      console.log(`✅ Seeded ${clubNames.length} clubs`);
+    }
 
     saveDatabase();
     console.log('✅ Database initialized successfully');

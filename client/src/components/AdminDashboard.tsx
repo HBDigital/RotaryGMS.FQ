@@ -50,6 +50,8 @@ interface Registration {
   razorpay_payment_id: string;
   created_at: string;
   delegates: Delegate[];
+  email_status: string;
+  whatsapp_status: string;
 }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
@@ -62,7 +64,16 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'clubs'>('overview');
+
+  interface ClubStatus {
+    unregistered: { id: number; name: string }[];
+    registered: { club_name: string; receipt_no: string; delegate_count: number }[];
+  }
+  const [clubStatus, setClubStatus] = useState<ClubStatus | null>(null);
+  const [clubsLoading, setClubsLoading] = useState(false);
+  const [newClubName, setNewClubName] = useState('');
+  const [addingClub, setAddingClub] = useState(false);
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -71,11 +82,39 @@ const AdminDashboard: React.FC = () => {
     }
     fetchDashboardData();
     fetchTransactions(1);
+    fetchClubStatus();
   }, [navigate]);
 
   const handleLogout = () => {
     sessionStorage.removeItem('adminLoggedIn');
     navigate('/admin-login');
+  };
+
+  const fetchClubStatus = async () => {
+    try {
+      setClubsLoading(true);
+      const res = await axios.get(`${API_URL}/admin/unregistered-clubs`);
+      setClubStatus(res.data);
+    } catch (error) {
+      console.error('Error fetching club status:', error);
+    } finally {
+      setClubsLoading(false);
+    }
+  };
+
+  const handleAddClub = async () => {
+    if (!newClubName.trim()) return;
+    try {
+      setAddingClub(true);
+      await axios.post(`${API_URL}/admin/clubs`, { name: newClubName.trim() });
+      setNewClubName('');
+      fetchClubStatus();
+    } catch (error) {
+      console.error('Error adding club:', error);
+      alert('Failed to add club');
+    } finally {
+      setAddingClub(false);
+    }
   };
 
   const fetchDashboardData = async () => {
@@ -135,6 +174,19 @@ const AdminDashboard: React.FC = () => {
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
         {status.toUpperCase()}
+      </span>
+    );
+  };
+
+  const getNotifBadge = (status: string, label: string) => {
+    const icon = label === 'Email' ? '✉️' : '💬';
+    const colorClass =
+      status === 'sent' ? 'bg-green-100 text-green-800' :
+      status === 'failed' ? 'bg-red-100 text-red-800' :
+      'bg-gray-100 text-gray-500';
+    return (
+      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colorClass}`}>
+        {icon} {label}: {(status || 'pending').toUpperCase()}
       </span>
     );
   };
@@ -273,6 +325,21 @@ const AdminDashboard: React.FC = () => {
               >
                 All Registrations
               </button>
+              <button
+                onClick={() => { setActiveTab('clubs'); fetchClubStatus(); }}
+                className={`px-6 py-4 text-sm font-medium ${
+                  activeTab === 'clubs'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Club Status
+                {clubStatus && clubStatus.unregistered.length > 0 && (
+                  <span className="ml-2 bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                    {clubStatus.unregistered.length}
+                  </span>
+                )}
+              </button>
             </nav>
           </div>
 
@@ -367,6 +434,92 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
+            {activeTab === 'clubs' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    Club Registration Status
+                    {clubStatus && (
+                      <span className="ml-3 text-sm font-normal text-gray-500">
+                        {clubStatus.registered.length} registered · {clubStatus.unregistered.length} pending
+                      </span>
+                    )}
+                  </h2>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newClubName}
+                      onChange={(e) => setNewClubName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleAddClub()}
+                      placeholder="Add new club name"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <button
+                      onClick={handleAddClub}
+                      disabled={addingClub || !newClubName.trim()}
+                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-40"
+                    >
+                      {addingClub ? 'Adding…' : '+ Add Club'}
+                    </button>
+                  </div>
+                </div>
+
+                {clubsLoading ? (
+                  <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
+                ) : clubStatus && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* NOT REGISTERED */}
+                    <div>
+                      <h3 className="text-base font-semibold text-red-700 mb-3 flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
+                        Not Yet Registered ({clubStatus.unregistered.length})
+                      </h3>
+                      <div className="border border-red-200 rounded-lg overflow-hidden">
+                        {clubStatus.unregistered.length === 0 ? (
+                          <p className="text-center text-gray-500 py-6 text-sm">All clubs have registered! 🎉</p>
+                        ) : (
+                          <ul className="divide-y divide-red-100 max-h-[480px] overflow-y-auto">
+                            {clubStatus.unregistered.map((club) => (
+                              <li key={club.id} className="px-4 py-2.5 text-sm text-gray-800 hover:bg-red-50 flex items-center gap-2">
+                                <span className="text-red-400">✗</span> {club.name}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* REGISTERED */}
+                    <div>
+                      <h3 className="text-base font-semibold text-green-700 mb-3 flex items-center gap-2">
+                        <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
+                        Registered ({clubStatus.registered.length})
+                      </h3>
+                      <div className="border border-green-200 rounded-lg overflow-hidden">
+                        {clubStatus.registered.length === 0 ? (
+                          <p className="text-center text-gray-500 py-6 text-sm">No registrations yet.</p>
+                        ) : (
+                          <ul className="divide-y divide-green-100 max-h-[480px] overflow-y-auto">
+                            {clubStatus.registered.map((club, i) => (
+                              <li key={i} className="px-4 py-2.5 text-sm hover:bg-green-50 flex items-center justify-between">
+                                <span className="flex items-center gap-2">
+                                  <span className="text-green-500">✓</span>
+                                  <span className="text-gray-800">{club.club_name}</span>
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {club.receipt_no} · {club.delegate_count} delegate{club.delegate_count !== 1 ? 's' : ''}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'registrations' && (
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -424,11 +577,13 @@ const AdminDashboard: React.FC = () => {
                         </div>
                       </div>
 
-                      {registration.razorpay_payment_id && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          <p className="text-xs text-gray-500 break-all">Payment ID: <span className="font-mono">{registration.razorpay_payment_id}</span></p>
-                        </div>
-                      )}
+                      <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-2 items-center">
+                        {getNotifBadge(registration.email_status, 'Email')}
+                        {getNotifBadge(registration.whatsapp_status, 'WhatsApp')}
+                        {registration.razorpay_payment_id && (
+                          <p className="text-xs text-gray-500 break-all ml-auto">Payment ID: <span className="font-mono">{registration.razorpay_payment_id}</span></p>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
