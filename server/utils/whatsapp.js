@@ -21,7 +21,7 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
     // {{4}} = delegates count + amount
     const payload = {
       phone: intlPhone,
-      template_name: 'gms_registration_confirmation',
+      template_name: 'gms_payment',
       variables: [
         name,
         receipt_no,
