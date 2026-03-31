@@ -220,8 +220,7 @@ router.post('/verify-payment', async (req, res) => {
     const updateRegistration = db.prepare(`
       UPDATE registrations 
       SET payment_status = 'success', 
-          razorpay_payment_id = ?,
-          updated_at = CURRENT_TIMESTAMP
+          razorpay_payment_id = ?
       WHERE id = ? AND razorpay_order_id = ?
     `);
     await updateRegistration.run(razorpay_payment_id, registrationId, razorpay_order_id);
