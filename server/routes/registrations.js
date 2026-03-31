@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razorpay');
+const { sendReceiptEmail } = require('../utils/email');
+const { sendWhatsAppReceipt } = require('../utils/whatsapp');
 
 router.post('/registrations', async (req, res) => {
   try {
@@ -216,14 +218,30 @@ router.post('/verify-payment', async (req, res) => {
       console.warn('Proceeding with signature-verified payment approval');
     }
 
-    // Step 4: Signature is valid and registration exists — mark payment as SUCCESS
+    // Step 4: Generate incremental receipt number
+    const lastReceipt = await db.prepare(`
+      SELECT receipt_no FROM registrations 
+      WHERE receipt_no IS NOT NULL 
+      ORDER BY id DESC LIMIT 1
+    `).get();
+
+    let nextReceiptNum = 1;
+    if (lastReceipt?.receipt_no) {
+      const match = lastReceipt.receipt_no.match(/(\d+)$/);
+      if (match) nextReceiptNum = parseInt(match[1]) + 1;
+    }
+    const receipt_no = `GMS2026-${String(nextReceiptNum).padStart(3, '0')}`;
+    console.log(`✅ Generated receipt number: ${receipt_no}`);
+
+    // Step 5: Mark payment as SUCCESS and save receipt_no
     const updateRegistration = db.prepare(`
       UPDATE registrations 
       SET payment_status = 'success', 
-          razorpay_payment_id = ?
+          razorpay_payment_id = ?,
+          receipt_no = ?
       WHERE id = ? AND razorpay_order_id = ?
     `);
-    await updateRegistration.run(razorpay_payment_id, registrationId, razorpay_order_id);
+    await updateRegistration.run(razorpay_payment_id, receipt_no, registrationId, razorpay_order_id);
 
     const updateTransaction = db.prepare(`
       UPDATE transactions 
@@ -242,16 +260,39 @@ router.post('/verify-payment', async (req, res) => {
         signature_verified: true,
         payment_details: paymentDetails,
         registration_id: registrationId,
+        receipt_no,
         verification_timestamp: new Date().toISOString()
       }),
       razorpay_order_id
     );
 
-    console.log(`✅ Payment verified: Registration ${registrationId}, Order ${razorpay_order_id}, Payment ${razorpay_payment_id}`);
+    console.log(`✅ Payment verified: Registration ${registrationId}, Receipt ${receipt_no}, Order ${razorpay_order_id}, Payment ${razorpay_payment_id}`);
+
+    // Step 6: Fetch delegates for notifications
+    const delegates = await db.prepare(`
+      SELECT delegate_name, delegate_designation FROM delegates WHERE registration_id = ?
+    `).all(registrationId);
+
+    // Step 7: Send email and WhatsApp notifications (non-blocking)
+    const notificationData = {
+      name: registration.name,
+      email: registration.email,
+      phone: registration.phone,
+      club_name: registration.club_name,
+      delegate_count: registration.delegate_count,
+      total_amount: registration.total_amount,
+      receipt_no,
+      payment_id: razorpay_payment_id,
+      delegates,
+    };
+
+    sendReceiptEmail(notificationData).catch(err => console.error('Email notification failed:', err));
+    sendWhatsAppReceipt(notificationData).catch(err => console.error('WhatsApp notification failed:', err));
 
     res.status(200).json({
       success: true,
       message: 'Payment verified successfully',
+      receipt_no,
       verification_details: {
         registration_id: registrationId,
         order_id: razorpay_order_id,

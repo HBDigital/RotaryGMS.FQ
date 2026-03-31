@@ -21,6 +21,7 @@ const PaymentSuccess: React.FC = () => {
     orderId, 
     amount, 
     delegates, 
+    receipt_no,
     verificationDetails, 
     registrationData 
   } = location.state || {};
@@ -39,7 +40,16 @@ const PaymentSuccess: React.FC = () => {
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Payment Successful!</h1>
-        <p className="text-gray-600 mb-6">Your registration has been confirmed and verified</p>
+        <p className="text-gray-600 mb-4">Your registration has been confirmed and verified</p>
+
+        {/* Receipt Number */}
+        {receipt_no && (
+          <div className="bg-blue-600 text-white rounded-xl p-4 mb-6">
+            <p className="text-xs uppercase tracking-widest text-blue-200 mb-1">Receipt Number</p>
+            <p className="text-2xl font-bold tracking-widest">{receipt_no}</p>
+            <p className="text-xs text-blue-200 mt-1">Please save this for on-site verification</p>
+          </div>
+        )}
 
         {/* Registration Details */}
         {registrationData && (

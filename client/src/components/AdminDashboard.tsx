@@ -21,6 +21,14 @@ interface Transaction {
   name: string;
   email: string;
   club_name: string;
+  receipt_no: string;
+}
+
+interface Pagination {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 interface Delegate {
@@ -30,6 +38,7 @@ interface Delegate {
 
 interface Registration {
   id: number;
+  receipt_no: string;
   name: string;
   email: string;
   phone: string;
@@ -49,17 +58,19 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({ total: 0, page: 1, limit: 10, totalPages: 1 });
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
+  const [txLoading, setTxLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'registrations'>('overview');
 
   useEffect(() => {
-    // Check authentication
     if (!sessionStorage.getItem('adminLoggedIn')) {
       navigate('/admin-login');
       return;
     }
     fetchDashboardData();
+    fetchTransactions(1);
   }, [navigate]);
 
   const handleLogout = () => {
@@ -74,9 +85,7 @@ const AdminDashboard: React.FC = () => {
         axios.get(`${API_URL}/admin/summary`),
         axios.get(`${API_URL}/admin/registrations`),
       ]);
-
       setSummary(summaryRes.data.summary);
-      setRecentTransactions(summaryRes.data.recentTransactions);
       setRegistrations(registrationsRes.data.registrations);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -86,22 +95,32 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleExportCSV = async () => {
+  const fetchTransactions = async (page: number) => {
     try {
-      const response = await axios.get(`${API_URL}/admin/export-csv`, {
-        responseType: 'blob',
-      });
+      setTxLoading(true);
+      const res = await axios.get(`${API_URL}/admin/transactions?page=${page}&limit=10`);
+      setRecentTransactions(res.data.transactions);
+      setPagination(res.data.pagination);
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+    } finally {
+      setTxLoading(false);
+    }
+  };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/admin/export-excel`, { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `registrations_${Date.now()}.csv`);
+      link.setAttribute('download', `GMS2026_Registrations_${Date.now()}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
-      console.error('Error exporting CSV:', error);
-      alert('Failed to export CSV');
+      console.error('Error exporting Excel:', error);
+      alert('Failed to export Excel');
     }
   };
 
@@ -261,72 +280,115 @@ const AdminDashboard: React.FC = () => {
             {activeTab === 'overview' && (
               <div>
                 <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Transactions</h2>
-                {/* Mobile Card View */}
-                <div className="block sm:hidden space-y-4">
-                  {recentTransactions.map((transaction) => (
-                    <div key={transaction.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{transaction.name}</h3>
-                          <p className="text-sm text-gray-600">{transaction.club_name}</p>
+                {txLoading ? (
+                  <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
+                ) : (
+                  <>
+                    {/* Mobile Card View */}
+                    <div className="block sm:hidden space-y-4">
+                      {recentTransactions.map((transaction) => (
+                        <div key={transaction.id} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                          {transaction.receipt_no && (
+                            <p className="text-xs font-bold text-blue-700 mb-2">Receipt: {transaction.receipt_no}</p>
+                          )}
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{transaction.name}</h3>
+                              <p className="text-sm text-gray-600">{transaction.club_name}</p>
+                            </div>
+                            <div className="text-right">
+                              {getStatusBadge(transaction.status)}
+                              <p className="text-lg font-bold text-gray-900 mt-1">₹{transaction.amount.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          <div className="text-xs text-gray-500 space-y-1">
+                            <p><span className="font-medium">Payment ID:</span> {transaction.razorpay_payment_id || '-'}</p>
+                            <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString()}</p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          {getStatusBadge(transaction.status)}
-                          <p className="text-lg font-bold text-gray-900 mt-1">₹{transaction.amount.toLocaleString()}</p>
-                        </div>
-                      </div>
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p><span className="font-medium">ID:</span> {transaction.id}</p>
-                        <p><span className="font-medium">Payment ID:</span> {transaction.razorpay_payment_id || '-'}</p>
-                        <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString()}</p>
+                      ))}
+                    </div>
+                    {/* Desktop Table View */}
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Receipt No</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Club</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment ID</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {recentTransactions.map((transaction) => (
+                            <tr key={transaction.id} className="hover:bg-gray-50">
+                              <td className="px-4 py-4 whitespace-nowrap text-sm font-bold text-blue-700">{transaction.receipt_no || '-'}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.name}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.club_name}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">₹{transaction.amount.toLocaleString()}</td>
+                              <td className="px-4 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono text-xs">{transaction.razorpay_payment_id || '-'}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(transaction.created_at).toLocaleString()}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {/* Pagination */}
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-sm text-gray-600">
+                        Showing {((pagination.page - 1) * pagination.limit) + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+                      </p>
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={() => fetchTransactions(pagination.page - 1)}
+                          disabled={pagination.page <= 1}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:cursor-not-allowed"
+                        >
+                          Previous
+                        </button>
+                        <span className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md">
+                          {pagination.page} / {pagination.totalPages}
+                        </span>
+                        <button
+                          onClick={() => fetchTransactions(pagination.page + 1)}
+                          disabled={pagination.page >= pagination.totalPages}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded-md disabled:opacity-40 hover:bg-gray-50 disabled:cursor-not-allowed"
+                        >
+                          Next
+                        </button>
                       </div>
                     </div>
-                  ))}
-                </div>
-                {/* Desktop Table View */}
-                <div className="hidden sm:block overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Club</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {recentTransactions.map((transaction) => (
-                        <tr key={transaction.id} className="hover:bg-gray-50">
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.id}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.club_name}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{transaction.amount.toLocaleString()}</td>
-                          <td className="px-6 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-mono text-xs">
-                            {transaction.razorpay_payment_id || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(transaction.created_at).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                  </>
+                )}
               </div>
             )}
 
             {activeTab === 'registrations' && (
               <div>
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">All Registrations</h2>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">All Registrations</h2>
+                  <button
+                    onClick={handleExportExcel}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Export Excel</span>
+                  </button>
+                </div>
                 <div className="space-y-4">
                   {registrations.map((registration) => (
                     <div key={registration.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">
                       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-4 space-y-3 sm:space-y-0">
                         <div>
+                          {registration.receipt_no && (
+                            <p className="text-xs font-bold text-blue-700 mb-1">Receipt: {registration.receipt_no}</p>
+                          )}
                           <h3 className="text-lg font-semibold text-gray-900">{registration.name}</h3>
                           <p className="text-sm text-gray-600">{registration.email} • {registration.phone}</p>
                           <p className="text-sm text-gray-600 mt-1">Club: {registration.club_name}</p>

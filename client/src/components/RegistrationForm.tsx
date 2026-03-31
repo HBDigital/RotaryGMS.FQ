@@ -146,6 +146,7 @@ const RegistrationForm: React.FC = () => {
                 orderId: response.razorpay_order_id,
                 amount: amount,
                 delegates: formData.delegate_count,
+                receipt_no: verifyResponse.data.receipt_no,
                 verificationDetails: verifyResponse.data.verification_details,
                 registrationData: {
                   name: formData.name,

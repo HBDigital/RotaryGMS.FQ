@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { Parser } = require('json2csv');
+const XLSX = require('xlsx');
 
 router.get('/admin/summary', async (req, res) => {
   try {
@@ -26,18 +26,6 @@ router.get('/admin/summary', async (req, res) => {
       SELECT COUNT(*) as count FROM registrations WHERE payment_status = 'failed'
     `).get();
 
-    const recentTransactions = await db.prepare(`
-      SELECT 
-        t.*,
-        r.name,
-        r.email,
-        r.club_name
-      FROM transactions t
-      LEFT JOIN registrations r ON t.registration_id = r.id
-      ORDER BY t.created_at DESC
-      LIMIT 10
-    `).all();
-
     res.status(200).json({
       success: true,
       summary: {
@@ -47,11 +35,48 @@ router.get('/admin/summary', async (req, res) => {
         pendingPayments: pendingPayments.count,
         failedPayments: failedPayments.count,
       },
-      recentTransactions,
     });
   } catch (error) {
     console.error('Error fetching admin summary:', error);
     res.status(500).json({ error: 'Failed to fetch summary' });
+  }
+});
+
+// Paginated transactions endpoint
+router.get('/admin/transactions', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const totalCount = await db.prepare(`SELECT COUNT(*) as count FROM transactions`).get();
+
+    const transactions = await db.prepare(`
+      SELECT 
+        t.*,
+        r.name,
+        r.email,
+        r.club_name,
+        r.receipt_no
+      FROM transactions t
+      LEFT JOIN registrations r ON t.registration_id = r.id
+      ORDER BY t.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+
+    res.status(200).json({
+      success: true,
+      transactions,
+      pagination: {
+        total: totalCount.count,
+        page,
+        limit,
+        totalPages: Math.ceil(totalCount.count / limit),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching transactions:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
   }
 });
 
@@ -67,11 +92,7 @@ router.get('/admin/registrations', async (req, res) => {
         FROM delegates 
         WHERE registration_id = ?
       `).all(registration.id);
-
-      return {
-        ...registration,
-        delegates,
-      };
+      return { ...registration, delegates };
     }));
 
     res.status(200).json({
@@ -84,81 +105,66 @@ router.get('/admin/registrations', async (req, res) => {
   }
 });
 
-router.get('/admin/export-csv', async (req, res) => {
+// Excel export - each delegate on a separate row, transaction details repeated
+router.get('/admin/export-excel', async (req, res) => {
   try {
     const registrations = await db.prepare(`
       SELECT 
-        r.id,
-        r.name,
-        r.email,
-        r.phone,
-        r.club_name,
-        r.delegate_count,
-        r.total_amount,
-        r.payment_status,
-        r.razorpay_order_id,
-        r.razorpay_payment_id,
-        r.created_at
+        r.id, r.receipt_no, r.name, r.email, r.phone, r.club_name,
+        r.delegate_count, r.total_amount, r.payment_status,
+        r.razorpay_order_id, r.razorpay_payment_id, r.created_at
       FROM registrations r
       WHERE r.payment_status = 'success'
-      ORDER BY r.created_at DESC
+      ORDER BY r.id ASC
     `).all();
 
-    const csvData = [];
-    
-    for (const registration of registrations) {
+    const rows = [];
+
+    for (const reg of registrations) {
       const delegates = await db.prepare(`
-        SELECT delegate_name, delegate_designation 
-        FROM delegates 
-        WHERE registration_id = ?
-      `).all(registration.id);
+        SELECT delegate_name, delegate_designation FROM delegates WHERE registration_id = ?
+      `).all(reg.id);
 
       delegates.forEach((delegate, index) => {
-        csvData.push({
-          'Registration ID': registration.id,
-          'Name': registration.name,
-          'Email': registration.email,
-          'Phone': registration.phone,
-          'Club Name': registration.club_name,
-          'Total Delegates': registration.delegate_count,
-          'Total Amount': registration.total_amount,
-          'Payment Status': registration.payment_status,
-          'Razorpay Order ID': registration.razorpay_order_id,
-          'Razorpay Payment ID': registration.razorpay_payment_id,
-          'Delegate Number': index + 1,
+        rows.push({
+          'Receipt No': reg.receipt_no || '',
+          'Reg ID': reg.id,
+          'Name': reg.name,
+          'Email': reg.email,
+          'Phone': reg.phone,
+          'Club Name': reg.club_name,
+          'Total Delegates': reg.delegate_count,
+          'Amount (₹)': reg.total_amount,
+          'Payment Status': reg.payment_status,
+          'Razorpay Order ID': reg.razorpay_order_id || '',
+          'Razorpay Payment ID': reg.razorpay_payment_id || '',
+          'Registration Date': reg.created_at,
+          'Delegate #': index + 1,
           'Delegate Name': delegate.delegate_name,
           'Delegate Designation': delegate.delegate_designation,
-          'Registration Date': registration.created_at,
         });
       });
     }
 
-    const fields = [
-      'Registration ID',
-      'Name',
-      'Email',
-      'Phone',
-      'Club Name',
-      'Total Delegates',
-      'Total Amount',
-      'Payment Status',
-      'Razorpay Order ID',
-      'Razorpay Payment ID',
-      'Delegate Number',
-      'Delegate Name',
-      'Delegate Designation',
-      'Registration Date',
-    ];
+    const worksheet = XLSX.utils.json_to_sheet(rows);
 
-    const json2csvParser = new Parser({ fields });
-    const csv = json2csvParser.parse(csvData);
+    // Auto-width columns
+    const colWidths = Object.keys(rows[0] || {}).map(key => ({
+      wch: Math.max(key.length, ...rows.map(r => String(r[key] || '').length)) + 2,
+    }));
+    worksheet['!cols'] = colWidths;
 
-    res.header('Content-Type', 'text/csv');
-    res.header('Content-Disposition', `attachment; filename=registrations_${Date.now()}.csv`);
-    res.send(csv);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
+
+    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_Registrations_${Date.now()}.xlsx`);
+    res.send(buffer);
   } catch (error) {
-    console.error('Error exporting CSV:', error);
-    res.status(500).json({ error: 'Failed to export CSV' });
+    console.error('Error exporting Excel:', error);
+    res.status(500).json({ error: 'Failed to export Excel' });
   }
 });
 

@@ -94,6 +94,10 @@ async function initDatabase() {
     db.run(createTablesSQL);
     console.log('✅ Database tables created/verified');
 
+    // Migrations - add new columns if they don't exist
+    try { db.run('ALTER TABLE registrations ADD COLUMN receipt_no TEXT'); } catch (e) { /* already exists */ }
+    console.log('✅ Database migrations applied');
+
     saveDatabase();
     console.log('✅ Database initialized successfully');
     
