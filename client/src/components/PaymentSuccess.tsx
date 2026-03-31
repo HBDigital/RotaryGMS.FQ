@@ -118,12 +118,6 @@ const PaymentSuccess: React.FC = () => {
           >
             Register Another
           </button>
-          <button
-            onClick={() => navigate('/admin')}
-            className="w-full bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-colors"
-          >
-            View Dashboard
-          </button>
         </div>
 
         <p className="text-sm text-gray-500 mt-6">

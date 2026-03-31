@@ -5,17 +5,40 @@ const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razo
 
 router.post('/registrations', async (req, res) => {
   try {
+    console.log('Registration request received:', req.body);
+    
     const { name, email, phone, club_name, delegate_count, delegates } = req.body;
 
+    // Enhanced validation
     if (!name || !email || !phone || !club_name || !delegate_count || !delegates) {
-      return res.status(400).json({ error: 'All fields are required' });
+      console.error('Missing required fields:', { name, email, phone, club_name, delegate_count, delegates });
+      return res.status(400).json({ 
+        error: 'All fields are required',
+        missing: { name, email, phone, club_name, delegate_count, delegates }
+      });
     }
 
     if (delegates.length !== delegate_count) {
-      return res.status(400).json({ error: 'Delegate count mismatch' });
+      console.error('Delegate count mismatch:', { delegate_count, delegatesLength: delegates.length });
+      return res.status(400).json({ 
+        error: 'Delegate count mismatch',
+        expected: delegate_count,
+        received: delegates.length
+      });
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Validate phone format
+    if (!/^[0-9]{10}$/.test(phone.replace(/\s/g, ''))) {
+      return res.status(400).json({ error: 'Phone must be 10 digits' });
     }
 
     const total_amount = delegate_count * 1000;
+    console.log('Creating registration:', { name, email, total_amount });
 
     const insertRegistration = db.prepare(`
       INSERT INTO registrations (name, email, phone, club_name, delegate_count, total_amount, payment_status)
@@ -24,6 +47,8 @@ router.post('/registrations', async (req, res) => {
 
     const result = await insertRegistration.run(name, email, phone, club_name, delegate_count, total_amount);
     const registrationId = result.lastInsertRowid;
+    
+    console.log('Registration created with ID:', registrationId);
 
     const insertDelegate = db.prepare(`
       INSERT INTO delegates (registration_id, delegate_name, delegate_designation)
@@ -31,8 +56,13 @@ router.post('/registrations', async (req, res) => {
     `);
 
     for (const delegate of delegates) {
+      if (!delegate.name || !delegate.designation) {
+        throw new Error(`Delegate name and designation are required for delegate ${delegates.indexOf(delegate) + 1}`);
+      }
       await insertDelegate.run(registrationId, delegate.name, delegate.designation);
     }
+
+    console.log('Delegates added for registration:', registrationId);
 
     res.status(201).json({
       success: true,
@@ -41,7 +71,30 @@ router.post('/registrations', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating registration:', error);
-    res.status(500).json({ error: 'Failed to create registration' });
+    console.error('Stack trace:', error.stack);
+    
+    // Provide more specific error messages
+    if (error.message.includes('SQLITE') || error.message.includes('database')) {
+      res.status(500).json({ 
+        error: 'Database error occurred',
+        details: error.message 
+      });
+    } else if (error.message.includes('permission') || error.message.includes('EACCES')) {
+      res.status(500).json({ 
+        error: 'File permission error',
+        details: 'Server cannot write to database file'
+      });
+    } else if (error.message.includes('ENOENT')) {
+      res.status(500).json({ 
+        error: 'File not found',
+        details: 'Database file or directory missing'
+      });
+    } else {
+      res.status(500).json({ 
+        error: 'Failed to create registration',
+        details: error.message 
+      });
+    }
   }
 });
 
@@ -281,6 +334,29 @@ router.post('/verify-payment', async (req, res) => {
 
     } catch (fetchError) {
       console.error('Error fetching payment details from Razorpay:', fetchError);
+      
+      // Handle specific Razorpay errors
+      if (fetchError.error?.code === 'BAD_REQUEST_ERROR') {
+        console.error('Payment not found or already processed:', razorpay_payment_id);
+        
+        const updateTransaction = db.prepare(`
+          UPDATE transactions 
+          SET status = 'failed', 
+              raw_response = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE razorpay_order_id = ?
+        `);
+        await updateTransaction.run(JSON.stringify({
+          error: 'Payment not found or already processed',
+          payment_id: razorpay_payment_id,
+          fetch_error: fetchError.message
+        }), razorpay_order_id);
+
+        return res.status(400).json({
+          success: false,
+          error: 'Payment not found or already processed. Please contact support.',
+        });
+      }
       
       const updateTransaction = db.prepare(`
         UPDATE transactions 
