@@ -80,7 +80,7 @@ const PaymentSuccess: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Amount Paid:</span>
-              <span className="font-semibold text-gray-900">₹{amount?.toLocaleString() || verification?.amount ? (verification.amount / 100).toLocaleString() : '0'}</span>
+              <span className="font-semibold text-gray-900">₹{(verification?.amount || amount || 0).toLocaleString()}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Status:</span>
