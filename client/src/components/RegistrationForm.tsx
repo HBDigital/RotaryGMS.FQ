@@ -309,22 +309,32 @@ const RegistrationForm: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Club Name <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="club_name"
-                    value={formData.club_name}
-                    onChange={(e) => {
-                      setFormData({ ...formData, club_name: e.target.value });
-                      if (errors.club_name) setErrors({ ...errors, club_name: '' });
-                    }}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
-                      errors.club_name ? 'border-red-500' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select your club</option>
-                    {clubs.map((club) => (
-                      <option key={club} value={club}>{club}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      name="club_name"
+                      value={formData.club_name}
+                      onChange={(e) => {
+                        setFormData({ ...formData, club_name: e.target.value });
+                        if (errors.club_name) setErrors({ ...errors, club_name: '' });
+                      }}
+                      className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
+                        errors.club_name ? 'border-red-500' : 'border-gray-300'
+                      }`}
+                    >
+                      <option value="">— Select your club —</option>
+                      {clubs.length === 0 && (
+                        <option disabled>Loading clubs...</option>
+                      )}
+                      {clubs.map((club) => (
+                        <option key={club} value={club}>{club}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </div>
+                  </div>
                   {errors.club_name && <p className="text-red-500 text-sm mt-1">{errors.club_name}</p>}
                 </div>
               </div>
@@ -375,22 +385,29 @@ const RegistrationForm: React.FC = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Designation <span className="text-red-500">*</span>
                         </label>
-                        <select
-                          value={delegate.designation}
-                          onChange={(e) => handleDelegateChange(index, 'designation', e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
-                            errors[`delegate_${index}_designation`] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                        >
-                          <option value="">Select Designation</option>
-                          <option value="President 2025-26">President 2025-26</option>
-                          <option value="President Elect(2026-27)">President Elect(2026-27)</option>
-                          <option value="Treasurer 2026-27">Treasurer 2026-27</option>
-                          <option value="Secretary elect 2026-27">Secretary elect 2026-27</option>
-                          <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
-                          <option value="Member">Member</option>
-                          <option value="Rotaract">Rotaract</option>
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={delegate.designation}
+                            onChange={(e) => handleDelegateChange(index, 'designation', e.target.value)}
+                            className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
+                              errors[`delegate_${index}_designation`] ? 'border-red-500' : 'border-gray-300'
+                            }`}
+                          >
+                            <option value="">Select Designation</option>
+                            <option value="President 2025-26">President 2025-26</option>
+                            <option value="President Elect(2026-27)">President Elect(2026-27)</option>
+                            <option value="Treasurer 2026-27">Treasurer 2026-27</option>
+                            <option value="Secretary elect 2026-27">Secretary elect 2026-27</option>
+                            <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
+                            <option value="Member">Member</option>
+                            <option value="Rotaract">Rotaract</option>
+                          </select>
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
                         {errors[`delegate_${index}_designation`] && (
                           <p className="text-red-500 text-sm mt-1">{errors[`delegate_${index}_designation`]}</p>
                         )}

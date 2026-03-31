@@ -107,9 +107,10 @@ async function initDatabase() {
     try { db.run("ALTER TABLE registrations ADD COLUMN whatsapp_status TEXT DEFAULT 'pending'"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
 
-    // Seed clubs if table is empty
-    const clubCount = db.prepare('SELECT COUNT(*) as count FROM clubs').get();
-    if (clubCount.count === 0) {
+    // Seed clubs if table is empty (use db.exec for sync count check)
+    const countResult = db.exec("SELECT COUNT(*) FROM clubs");
+    const clubCount = countResult.length > 0 ? countResult[0].values[0][0] : 0;
+    if (clubCount === 0) {
       const clubNames = [
         'Coimbatore', 'Coimbatore Central', 'Coimbatore East', 'Coimbatore Mid-Town',
         'Coimbatore North', 'Coimbatore West', 'Palghat', 'Chittur Palghat',
@@ -131,13 +132,9 @@ async function initDatabase() {
         'Coimbatore City', "Coimbatore D'elite", 'Coimbatore Monarks', 'Coimbatore Smart City',
         'Coimbatore Meridian', 'Coimbatore Industrial City', 'Rotaract Club',
       ];
-      const insertClub = db.prepare("INSERT OR IGNORE INTO clubs (name) VALUES (?)");
       for (const name of clubNames) {
-        insertClub.bind([name]);
-        insertClub.step();
-        insertClub.reset();
+        db.run("INSERT OR IGNORE INTO clubs (name) VALUES (?)", [name]);
       }
-      insertClub.free();
       console.log(`✅ Seeded ${clubNames.length} clubs`);
     }
 
