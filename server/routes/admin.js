@@ -222,4 +222,17 @@ router.get('/admin/unregistered-clubs', async (req, res) => {
   }
 });
 
+// TEMP: Clear all registrations (for prod reset)
+router.post('/admin/reset-registrations', async (req, res) => {
+  try {
+    await db.prepare('DELETE FROM registrations').run();
+    await db.prepare('DELETE FROM delegates').run();
+    await db.prepare('DELETE FROM transactions').run();
+    res.status(200).json({ success: true, message: 'All registrations cleared' });
+  } catch (error) {
+    console.error('Error clearing registrations:', error);
+    res.status(500).json({ error: 'Failed to clear registrations' });
+  }
+});
+
 module.exports = router;
