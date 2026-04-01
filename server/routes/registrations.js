@@ -39,7 +39,7 @@ router.post('/registrations', async (req, res) => {
       return res.status(400).json({ error: 'Phone must be 10 digits' });
     }
 
-    const total_amount = delegate_count * 1000;
+    const total_amount = delegate_count * 1050;
     console.log('Creating registration:', { name, email, total_amount });
 
     const insertRegistration = db.prepare(`
