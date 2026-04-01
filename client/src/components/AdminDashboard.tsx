@@ -74,6 +74,7 @@ const AdminDashboard: React.FC = () => {
   const [clubsLoading, setClubsLoading] = useState(false);
   const [newClubName, setNewClubName] = useState('');
   const [addingClub, setAddingClub] = useState(false);
+  const [clubFilter, setClubFilter] = useState('');
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -436,31 +437,78 @@ const AdminDashboard: React.FC = () => {
 
             {activeTab === 'clubs' && (
               <div>
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Club Registration Status
-                    {clubStatus && (
-                      <span className="ml-3 text-sm font-normal text-gray-500">
-                        {clubStatus.registered.length} registered · {clubStatus.unregistered.length} pending
-                      </span>
-                    )}
-                  </h2>
-                  <div className="flex gap-2">
+                <div className="mb-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Club Registration Status
+                      {clubStatus && (
+                        <span className="ml-3 text-sm font-normal text-gray-500">
+                          {clubStatus.registered.length} registered · {clubStatus.unregistered.length} pending
+                        </span>
+                      )}
+                    </h2>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newClubName}
+                        onChange={(e) => setNewClubName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAddClub()}
+                        placeholder="Add new club name"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <button
+                        onClick={handleAddClub}
+                        disabled={addingClub || !newClubName.trim()}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-40"
+                      >
+                        {addingClub ? 'Adding…' : '+ Add Club'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input
                       type="text"
-                      value={newClubName}
-                      onChange={(e) => setNewClubName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAddClub()}
-                      placeholder="Add new club name"
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={clubFilter}
+                      onChange={(e) => setClubFilter(e.target.value)}
+                      placeholder="🔍 Filter clubs by name..."
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     />
-                    <button
-                      onClick={handleAddClub}
-                      disabled={addingClub || !newClubName.trim()}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-blue-700 disabled:opacity-40"
-                    >
-                      {addingClub ? 'Adding…' : '+ Add Club'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (!clubStatus) return;
+                          const data = clubStatus.unregistered.filter(c => c.name.toLowerCase().includes(clubFilter.toLowerCase()));
+                          const csv = ['Club Name', ...data.map(c => c.name)].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `unregistered-clubs-${new Date().toISOString().slice(0,10)}.csv`;
+                          a.click();
+                        }}
+                        className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 disabled:opacity-40"
+                        disabled={!clubStatus || clubStatus.unregistered.length === 0}
+                      >
+                        📥 Export Unregistered
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (!clubStatus) return;
+                          const data = clubStatus.registered.filter(c => c.club_name.toLowerCase().includes(clubFilter.toLowerCase()));
+                          const csv = ['Club Name,Receipt No,Delegate Count', ...data.map(c => `"${c.club_name}",${c.receipt_no},${c.delegate_count}`)].join('\n');
+                          const blob = new Blob([csv], { type: 'text/csv' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `registered-clubs-${new Date().toISOString().slice(0,10)}.csv`;
+                          a.click();
+                        }}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 disabled:opacity-40"
+                        disabled={!clubStatus || clubStatus.registered.length === 0}
+                      >
+                        📥 Export Registered
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -479,11 +527,13 @@ const AdminDashboard: React.FC = () => {
                           <p className="text-center text-gray-500 py-6 text-sm">All clubs have registered! 🎉</p>
                         ) : (
                           <ul className="divide-y divide-red-100 max-h-[480px] overflow-y-auto">
-                            {clubStatus.unregistered.map((club) => (
-                              <li key={club.id} className="px-4 py-2.5 text-sm text-gray-800 hover:bg-red-50 flex items-center gap-2">
-                                <span className="text-red-400">✗</span> {club.name}
-                              </li>
-                            ))}
+                            {clubStatus.unregistered
+                              .filter(club => club.name.toLowerCase().includes(clubFilter.toLowerCase()))
+                              .map((club) => (
+                                <li key={club.id} className="px-4 py-2.5 text-sm text-gray-800 hover:bg-red-50 flex items-center gap-2">
+                                  <span className="text-red-400">✗</span> {club.name}
+                                </li>
+                              ))}
                           </ul>
                         )}
                       </div>
@@ -500,17 +550,19 @@ const AdminDashboard: React.FC = () => {
                           <p className="text-center text-gray-500 py-6 text-sm">No registrations yet.</p>
                         ) : (
                           <ul className="divide-y divide-green-100 max-h-[480px] overflow-y-auto">
-                            {clubStatus.registered.map((club, i) => (
-                              <li key={i} className="px-4 py-2.5 text-sm hover:bg-green-50 flex items-center justify-between">
-                                <span className="flex items-center gap-2">
-                                  <span className="text-green-500">✓</span>
-                                  <span className="text-gray-800">{club.club_name}</span>
-                                </span>
-                                <span className="text-xs text-gray-500">
-                                  {club.receipt_no} · {club.delegate_count} delegate{club.delegate_count !== 1 ? 's' : ''}
-                                </span>
-                              </li>
-                            ))}
+                            {clubStatus.registered
+                              .filter(club => club.club_name.toLowerCase().includes(clubFilter.toLowerCase()))
+                              .map((club, i) => (
+                                <li key={i} className="px-4 py-2.5 text-sm hover:bg-green-50 flex items-center justify-between">
+                                  <span className="flex items-center gap-2">
+                                    <span className="text-green-500">✓</span>
+                                    <span className="text-gray-800">{club.club_name}</span>
+                                  </span>
+                                  <span className="text-xs text-gray-500">
+                                    {club.receipt_no} · {club.delegate_count} delegate{club.delegate_count !== 1 ? 's' : ''}
+                                  </span>
+                                </li>
+                              ))}
                           </ul>
                         )}
                       </div>
