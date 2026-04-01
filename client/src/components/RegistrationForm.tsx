@@ -401,6 +401,10 @@ const RegistrationForm: React.FC = () => {
                             <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
                             <option value="Member">Member</option>
                             <option value="Rotaract">Rotaract</option>
+                            <option value="Assistant Governor">Assistant Governor</option>
+                            <option value="Governor Group Representative">Governor Group Representative</option>
+                            <option value="District Director">District Director</option>
+                            <option value="District official">District official</option>
                           </select>
                           <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
