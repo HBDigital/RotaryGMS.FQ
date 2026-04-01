@@ -428,7 +428,7 @@ const RegistrationForm: React.FC = () => {
                   <p className="text-sm opacity-90">Total Amount</p>
                   <p className="text-2xl sm:text-3xl font-bold">₹{totalAmount.toLocaleString()}</p>
                   <p className="text-sm opacity-90 mt-1">
-                    {formData.delegate_count} delegate(s) × ₹1,000 each
+                    {formData.delegate_count} delegate(s) × ₹1,050 each
                   </p>
                 </div>
                 <button
