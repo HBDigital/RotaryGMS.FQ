@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 interface Delegate {
@@ -40,8 +39,9 @@ const RegistrationForm: React.FC = () => {
   const [clubs, setClubs] = useState<string[]>([]);
 
   useEffect(() => {
-    axios.get(`${API_URL}/clubs`)
-      .then(res => setClubs(res.data.clubs.map((c: { name: string }) => c.name)))
+    fetch(`${API_URL}/clubs`)
+      .then(res => res.json())
+      .then(data => setClubs(data.clubs.map((c: { name: string }) => c.name)))
       .catch(() => setClubs([]));
   }, []);
 
@@ -119,12 +119,13 @@ const RegistrationForm: React.FC = () => {
         return;
       }
 
-      const orderResponse = await axios.post(`${API_URL}/create-order`, {
-        registrationId,
-        amount,
-      });
+      const orderResponse = await fetch(`${API_URL}/create-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ registrationId, amount }),
+      }).then(res => res.json());
 
-      const { orderId, keyId } = orderResponse.data;
+      const { orderId, keyId } = orderResponse;
 
       const options = {
         key: keyId,
@@ -137,24 +138,28 @@ const RegistrationForm: React.FC = () => {
           try {
             console.log('Payment response received:', response);
             
-            const verifyResponse = await axios.post(`${API_URL}/verify-payment`, {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              registrationId,
-            });
+            const verifyResponse = await fetch(`${API_URL}/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                registrationId,
+              }),
+            }).then(res => res.json());
 
-            console.log('Verification response:', verifyResponse.data);
+            console.log('Verification response:', verifyResponse);
 
-            if (verifyResponse.data.success) {
+            if (verifyResponse.success) {
               // Store verification details for success page
               const verificationData = {
                 paymentId: response.razorpay_payment_id,
                 orderId: response.razorpay_order_id,
                 amount: amount,
                 delegates: formData.delegate_count,
-                receipt_no: verifyResponse.data.receipt_no,
-                verificationDetails: verifyResponse.data.verification_details,
+                receipt_no: verifyResponse.receipt_no,
+                verificationDetails: verifyResponse.verification_details,
                 registrationData: {
                   name: formData.name,
                   email: formData.email,
@@ -167,10 +172,10 @@ const RegistrationForm: React.FC = () => {
                 state: verificationData
               });
             } else {
-              console.error('Payment verification failed:', verifyResponse.data.error);
+              console.error('Payment verification failed:', verifyResponse.error);
               navigate('/payment-failure', { 
                 state: { 
-                  error: verifyResponse.data.error,
+                  error: verifyResponse.error,
                   orderId: response.razorpay_order_id,
                   paymentId: response.razorpay_payment_id
                 } 
@@ -178,7 +183,7 @@ const RegistrationForm: React.FC = () => {
             }
           } catch (error: any) {
             console.error('Payment verification error:', error);
-            const errorMessage = error.response?.data?.error || 'Payment verification failed';
+            const errorMessage = error?.message || 'Payment verification failed';
             navigate('/payment-failure', { 
               state: { 
                 error: errorMessage,
@@ -223,10 +228,14 @@ const RegistrationForm: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/registrations`, formData);
+      const response = await fetch(`${API_URL}/registrations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      }).then(res => res.json());
       
-      if (response.data.success) {
-        const { registrationId, total_amount } = response.data;
+      if (response.success) {
+        const { registrationId, total_amount } = response;
         await handlePayment(registrationId, total_amount);
       }
     } catch (error) {

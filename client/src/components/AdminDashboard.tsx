@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
 interface Summary {
@@ -94,8 +93,8 @@ const AdminDashboard: React.FC = () => {
   const fetchClubStatus = async () => {
     try {
       setClubsLoading(true);
-      const res = await axios.get(`${API_URL}/admin/unregistered-clubs`);
-      setClubStatus(res.data);
+      const res = await fetch(`${API_URL}/admin/unregistered-clubs`).then(r => r.json());
+      setClubStatus(res);
     } catch (error) {
       console.error('Error fetching club status:', error);
     } finally {
@@ -107,7 +106,11 @@ const AdminDashboard: React.FC = () => {
     if (!newClubName.trim()) return;
     try {
       setAddingClub(true);
-      await axios.post(`${API_URL}/admin/clubs`, { name: newClubName.trim() });
+      await fetch(`${API_URL}/admin/clubs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newClubName.trim() }),
+      });
       setNewClubName('');
       fetchClubStatus();
     } catch (error) {
@@ -122,11 +125,11 @@ const AdminDashboard: React.FC = () => {
     try {
       setLoading(true);
       const [summaryRes, registrationsRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/summary`),
-        axios.get(`${API_URL}/admin/registrations`),
+        fetch(`${API_URL}/admin/summary`).then(r => r.json()),
+        fetch(`${API_URL}/admin/registrations`).then(r => r.json()),
       ]);
-      setSummary(summaryRes.data.summary);
-      setRegistrations(registrationsRes.data.registrations);
+      setSummary(summaryRes.summary);
+      setRegistrations(registrationsRes.registrations);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
       alert('Failed to load dashboard data');
@@ -138,9 +141,9 @@ const AdminDashboard: React.FC = () => {
   const fetchTransactions = async (page: number) => {
     try {
       setTxLoading(true);
-      const res = await axios.get(`${API_URL}/admin/transactions?page=${page}&limit=10`);
-      setRecentTransactions(res.data.transactions);
-      setPagination(res.data.pagination);
+      const res = await fetch(`${API_URL}/admin/transactions?page=${page}&limit=10`).then(r => r.json());
+      setRecentTransactions(res.transactions);
+      setPagination(res.pagination);
     } catch (error) {
       console.error('Error fetching transactions:', error);
     } finally {
@@ -150,8 +153,8 @@ const AdminDashboard: React.FC = () => {
 
   const handleExportExcel = async () => {
     try {
-      const response = await axios.get(`${API_URL}/admin/export-excel`, { responseType: 'blob' });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const blob = await fetch(`${API_URL}/admin/export-excel`).then(r => r.blob());
+      const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `GMS2026_Registrations_${Date.now()}.xlsx`);

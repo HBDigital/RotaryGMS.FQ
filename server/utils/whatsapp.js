@@ -1,5 +1,3 @@
-const axios = require('axios');
-
 const ASKEVA_BASE_URL = 'https://backend.askeva.io/v1/message/send-message';
 
 async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegate_count, total_amount }) {
@@ -43,17 +41,22 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
       },
     };
 
-    const response = await axios.post(`${ASKEVA_BASE_URL}?token=${token}`, payload, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 10000,
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    console.log(`✅ WhatsApp notification sent to ${intlPhone} for receipt ${receipt_no}`, response.data);
+    const response = await fetch(`${ASKEVA_BASE_URL}?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    console.log(`✅ WhatsApp notification sent to ${intlPhone} for receipt ${receipt_no}`, data);
     return true;
   } catch (error) {
-    console.error('❌ Failed to send WhatsApp notification:', error.response?.data || error.message);
+    console.error('❌ Failed to send WhatsApp notification:', error.message);
     return false;
   }
 }
