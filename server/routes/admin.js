@@ -276,10 +276,10 @@ router.get('/admin/district-report', async (req, res) => {
         name: dd.name,
         assistant_governors: Object.values(dd.assistant_governors).map(ag => {
           const agClubs = ag.clubs;
-          const compliant = agClubs.filter(c => c.status === 'compliant').length;
+          const completed = agClubs.filter(c => c.status === 'completed').length;
           const partial   = agClubs.filter(c => c.status === 'partial').length;
           const not_reg   = agClubs.filter(c => c.status === 'not_registered').length;
-          return { name: ag.name, total: agClubs.length, compliant, partial, not_registered: not_reg, clubs: agClubs };
+          return { name: ag.name, total: agClubs.length, completed, partial, not_registered: not_reg, clubs: agClubs };
         }),
       })),
     }));

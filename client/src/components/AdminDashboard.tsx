@@ -738,11 +738,8 @@ const AdminDashboard: React.FC = () => {
                                                   </div>
                                                   <span className="text-xs text-gray-500">
                                                     {club.status === 'not_registered' ? 'Not registered' :
-                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} · ${club.registration_count} registration${club.registration_count !== 1 ? 's' : ''}`
+                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''}`
                                                     }
-                                                    {club.status !== 'not_registered' && club.receipt_nos && (
-                                                      <span className="ml-1 text-gray-400">({club.receipt_nos})</span>
-                                                    )}
                                                     {club.status === 'partial' && <span className="ml-1 text-orange-500">(need ≥2)</span>}
                                                   </span>
                                                 </li>
