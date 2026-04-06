@@ -2,7 +2,74 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const XLSX = require('xlsx');
-const { sendWhatsAppAGReminder } = require('../utils/whatsapp');
+const { sendWhatsAppAGReminder, sendWhatsAppReceipt } = require('../utils/whatsapp');
+const { sendReceiptEmail } = require('../utils/email');
+const { razorpay } = require('../utils/razorpay');
+
+router.post('/admin/reconcile-payments', async (req, res) => {
+  try {
+    const pendingRegs = await db.prepare(`
+      SELECT id, name, email, phone, club_name, delegate_count, total_amount, razorpay_order_id
+      FROM registrations
+      WHERE payment_status != 'success' AND razorpay_order_id IS NOT NULL
+    `).all();
+
+    const reconciled = [];
+    const failed = [];
+
+    for (const reg of pendingRegs) {
+      try {
+        const orderPayments = await razorpay.orders.fetchPayments(reg.razorpay_order_id);
+        const captured = (orderPayments.items || []).find(p => p.status === 'captured');
+        if (!captured) { failed.push({ id: reg.id, name: reg.name, reason: 'No captured payment found' }); continue; }
+
+        const lastReceipt = await db.prepare(
+          `SELECT receipt_no FROM registrations WHERE receipt_no IS NOT NULL ORDER BY id DESC LIMIT 1`
+        ).get();
+        let nextNum = 1;
+        if (lastReceipt?.receipt_no) {
+          const m = lastReceipt.receipt_no.match(/(\d+)$/);
+          if (m) nextNum = parseInt(m[1]) + 1;
+        }
+        const receipt_no = `GMS2026-${String(nextNum).padStart(3, '0')}`;
+
+        await db.prepare(
+          `UPDATE registrations SET payment_status = 'success', razorpay_payment_id = ?, receipt_no = ? WHERE id = ?`
+        ).run(captured.id, receipt_no, reg.id);
+
+        await db.prepare(
+          `UPDATE transactions SET status = 'success', razorpay_payment_id = ?, updated_at = CURRENT_TIMESTAMP WHERE razorpay_order_id = ?`
+        ).run(captured.id, reg.razorpay_order_id);
+
+        const delegates = await db.prepare(
+          `SELECT delegate_name, delegate_designation FROM delegates WHERE registration_id = ?`
+        ).all(reg.id);
+
+        const notifData = {
+          name: reg.name, email: reg.email, phone: reg.phone,
+          club_name: reg.club_name, delegate_count: reg.delegate_count,
+          total_amount: reg.total_amount, receipt_no, payment_id: captured.id, delegates,
+        };
+        Promise.all([
+          sendReceiptEmail(notifData).catch(() => false),
+          sendWhatsAppReceipt(notifData).catch(() => false),
+        ]).then(([emailSent, waSent]) => {
+          db.prepare(`UPDATE registrations SET email_status = ?, whatsapp_status = ? WHERE id = ?`)
+            .run(emailSent ? 'sent' : 'failed', waSent ? 'sent' : 'failed', reg.id).catch(() => {});
+        });
+
+        reconciled.push({ id: reg.id, name: reg.name, receipt_no, payment_id: captured.id });
+      } catch (err) {
+        failed.push({ id: reg.id, name: reg.name, reason: err.message });
+      }
+    }
+
+    res.status(200).json({ success: true, reconciled, failed, total_checked: pendingRegs.length });
+  } catch (error) {
+    console.error('Reconcile error:', error);
+    res.status(500).json({ error: 'Failed to reconcile payments' });
+  }
+});
 
 router.get('/admin/summary', async (req, res) => {
   try {
