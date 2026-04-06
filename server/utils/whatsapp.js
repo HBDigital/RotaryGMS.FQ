@@ -61,4 +61,53 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
   }
 }
 
-module.exports = { sendWhatsAppReceipt };
+async function sendWhatsAppAGReminder({ agName, agPhone, pendingClubs }) {
+  try {
+    const token = process.env.ASKEVA_API_KEY;
+    if (!token || token === 'YOUR_ASKEVA_API_KEY_HERE') {
+      console.warn('⚠️ Askeva WhatsApp API not configured, skipping AG reminder');
+      return false;
+    }
+
+    const cleanPhone = agPhone.replace(/\D/g, '');
+    const intlPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+
+    const payload = {
+      to: intlPhone,
+      type: 'template',
+      template: {
+        language: { policy: 'deterministic', code: 'en' },
+        name: 'gms_reminder_2',
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              { type: 'text', text: agName },
+              { type: 'text', text: pendingClubs },
+            ],
+          },
+        ],
+      },
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(`${ASKEVA_BASE_URL}?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    console.log(`✅ AG reminder sent to ${agName} (${intlPhone})`, data);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send AG reminder:', error.message);
+    return false;
+  }
+}
+
+module.exports = { sendWhatsAppReceipt, sendWhatsAppAGReminder };

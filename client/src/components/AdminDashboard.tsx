@@ -80,7 +80,7 @@ const AdminDashboard: React.FC = () => {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
     delegate_count: number; registration_count: number; receipt_nos: string | null;
   }
-  interface AG { name: string; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
+  interface AG { name: string; phone: string | null; reminder_sent_today: boolean; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
   interface DD { name: string; assistant_governors: AG[]; }
   interface ZoneReport { zone: number; district_directors: DD[]; }
   interface AgListItem { assistant_governor: string; district_director: string; zone: number; }
@@ -91,6 +91,7 @@ const AdminDashboard: React.FC = () => {
   const [districtFilter, setDistrictFilter] = useState('');
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
+  const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -102,6 +103,28 @@ const AdminDashboard: React.FC = () => {
     fetchClubStatus();
     fetchDistrictReport();
   }, [navigate]);
+
+  const sendAgReminder = async (agName: string) => {
+    setReminderStatus(prev => ({ ...prev, [agName]: 'sending' }));
+    try {
+      const resp = await fetch(`${API_URL}/admin/send-ag-reminder`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ag_name: agName }),
+      });
+      if (resp.status === 429) {
+        setReminderStatus(prev => ({ ...prev, [agName]: 'cooldown' }));
+      } else if (resp.ok) {
+        setReminderStatus(prev => ({ ...prev, [agName]: 'sent' }));
+      } else {
+        setReminderStatus(prev => ({ ...prev, [agName]: 'idle' }));
+        alert('Failed to send reminder');
+      }
+    } catch {
+      setReminderStatus(prev => ({ ...prev, [agName]: 'idle' }));
+      alert('Failed to send reminder');
+    }
+  };
 
   const handleLogout = () => {
     sessionStorage.removeItem('adminLoggedIn');
@@ -707,11 +730,11 @@ const AdminDashboard: React.FC = () => {
                                       if (filterLower && visibleClubs.length === 0) return null;
                                       return (
                                         <div key={ag.name} className="bg-white">
-                                          <button
-                                            onClick={() => setExpandedAGs(prev => ({ ...prev, [agKey]: !agOpen }))}
-                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-blue-50 text-left"
-                                          >
-                                            <div className="flex items-center gap-3">
+                                          <div className="flex items-center justify-between px-5 py-3 hover:bg-blue-50">
+                                            <button
+                                              onClick={() => setExpandedAGs(prev => ({ ...prev, [agKey]: !agOpen }))}
+                                              className="flex items-center gap-3 flex-1 text-left"
+                                            >
                                               <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
                                               <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.completed}/{ag.total}</span>
                                               {ag.not_registered + ag.partial > 0 && (
@@ -719,9 +742,26 @@ const AdminDashboard: React.FC = () => {
                                                   {ag.not_registered + ag.partial} not done
                                                 </span>
                                               )}
+                                            </button>
+                                            <div className="flex items-center gap-2">
+                                              {(() => {
+                                                const rs = reminderStatus[ag.name] || (ag.reminder_sent_today ? 'cooldown' : 'idle');
+                                                if (rs === 'sent' || rs === 'cooldown') {
+                                                  return <span className="text-xs text-gray-400 italic">Reminder sent today</span>;
+                                                }
+                                                return (
+                                                  <button
+                                                    onClick={() => sendAgReminder(ag.name)}
+                                                    disabled={rs === 'sending' || ag.not_registered + ag.partial === 0}
+                                                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                                                  >
+                                                    {rs === 'sending' ? 'Sending…' : '📲 Send Reminder'}
+                                                  </button>
+                                                );
+                                              })()}
+                                              <span className="text-gray-400 text-sm ml-1">{agOpen ? '▲' : '▼'}</span>
                                             </div>
-                                            <span className="text-gray-400 text-sm">{agOpen ? '▲' : '▼'}</span>
-                                          </button>
+                                          </div>
 
                                           {agOpen && (
                                             <ul className="px-5 pb-3 space-y-1">

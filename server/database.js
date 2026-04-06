@@ -94,6 +94,12 @@ async function initDatabase() {
       CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
       CREATE INDEX IF NOT EXISTS idx_registrations_payment_status ON registrations(payment_status);
       CREATE INDEX IF NOT EXISTS idx_delegates_registration_id ON delegates(registration_id);
+      CREATE TABLE IF NOT EXISTS reminder_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ag_name TEXT NOT NULL,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_registration_id ON transactions(registration_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(razorpay_order_id);
     `;
@@ -109,7 +115,34 @@ async function initDatabase() {
     try { db.run("ALTER TABLE clubs ADD COLUMN district_director TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN assistant_governor TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ggr TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN ag_phone TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
+
+    // Seed AG phone numbers (always update so new entries get phones)
+    const agPhones = [
+      ['Rtn. Maruthachalam S',        '9894020222'],
+      ['Rtn. Paul William W',          '9363129292'],
+      ['Rtn. Dr. Fredricks John',      '9345912889'],
+      ['Rtn. Bhavik Momaya',           '9677772172'],
+      ['Rtn. Dr. Deepana S N',         '9865261200'],
+      ['Rtn. Vijay C R',               '9366613384'],
+      ['Rtn. Krishna Murthy Rao S',    '9843015541'],
+      ['Rtn. Prabhu S',                '9488836000'],
+      ['Rtn. John Singarayar A',       '9500946666'],
+      ['Rtn. Gurpreet Singh',          '9843072720'],
+      ['Rtn. Ramakrishnan M',          '9843973000'],
+      ['Rtn. Dr. Rohini Sharma',       '9453011667'],
+      ['Rtn. Dr. Muthukumar S',        '9387217326'],
+      ['Rtn. Dr. Latha Nair',          '9447706453'],
+      ['Rtn. Vinu Jacob Thomas',       '9495227943'],
+      ['Rtn. Pratheesh Radhakrishnan', '9446147967'],
+      ['Rtn. Sujith Chandran',         '9809261991'],
+      ['Rtn. Vijayan K V',             '8547290255'],
+    ];
+    for (const [ag, phone] of agPhones) {
+      db.run("UPDATE clubs SET ag_phone = ? WHERE assistant_governor = ?", [phone, ag]);
+    }
+    console.log('✅ AG phone numbers seeded');
 
     // Seed clubs if table is empty (use db.exec for sync count check)
     const countResult = db.exec("SELECT COUNT(*) FROM clubs");

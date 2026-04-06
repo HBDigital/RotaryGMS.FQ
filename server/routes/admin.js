@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../database');
 const XLSX = require('xlsx');
+const { sendWhatsAppAGReminder } = require('../utils/whatsapp');
 
 router.get('/admin/summary', async (req, res) => {
   try {
@@ -237,6 +238,12 @@ router.get('/admin/district-report', async (req, res) => {
       ORDER BY c.zone ASC, c.district_director ASC, c.assistant_governor ASC, c.name ASC
     `).all();
 
+    const remindedToday = await db.prepare(`
+      SELECT DISTINCT ag_name FROM reminder_log
+      WHERE date(sent_at) = date('now')
+    `).all();
+    const remindedSet = new Set(remindedToday.map(r => r.ag_name));
+
     const agList = await db.prepare(`
       SELECT DISTINCT assistant_governor, district_director, zone
       FROM clubs
@@ -254,7 +261,12 @@ router.get('/admin/district-report', async (req, res) => {
       if (!zonesMap[zone]) zonesMap[zone] = { zone, district_directors: {} };
       if (!zonesMap[zone].district_directors[dd]) zonesMap[zone].district_directors[dd] = { name: dd, assistant_governors: {} };
       if (!zonesMap[zone].district_directors[dd].assistant_governors[ag]) {
-        zonesMap[zone].district_directors[dd].assistant_governors[ag] = { name: ag, clubs: [] };
+        zonesMap[zone].district_directors[dd].assistant_governors[ag] = {
+          name: ag,
+          phone: club.ag_phone || null,
+          reminder_sent_today: remindedSet.has(ag),
+          clubs: [],
+        };
       }
 
       const isCompliant = club.payment_status === 'success' && club.delegate_count >= 2;
@@ -279,7 +291,7 @@ router.get('/admin/district-report', async (req, res) => {
           const completed = agClubs.filter(c => c.status === 'completed').length;
           const partial   = agClubs.filter(c => c.status === 'partial').length;
           const not_reg   = agClubs.filter(c => c.status === 'not_registered').length;
-          return { name: ag.name, total: agClubs.length, completed, partial, not_registered: not_reg, clubs: agClubs };
+          return { name: ag.name, phone: ag.phone, reminder_sent_today: ag.reminder_sent_today, total: agClubs.length, completed, partial, not_registered: not_reg, clubs: agClubs };
         }),
       })),
     }));
@@ -288,6 +300,43 @@ router.get('/admin/district-report', async (req, res) => {
   } catch (error) {
     console.error('Error fetching district report:', error);
     res.status(500).json({ error: 'Failed to fetch district report' });
+  }
+});
+
+router.post('/admin/send-ag-reminder', async (req, res) => {
+  try {
+    const { ag_name } = req.body;
+    if (!ag_name) return res.status(400).json({ error: 'ag_name is required' });
+
+    const alreadySent = await db.prepare(
+      `SELECT id FROM reminder_log WHERE ag_name = ? AND date(sent_at) = date('now')`
+    ).get(ag_name);
+    if (alreadySent) return res.status(429).json({ error: 'Reminder already sent today for this AG' });
+
+    const agClub = await db.prepare(
+      `SELECT DISTINCT assistant_governor, ag_phone FROM clubs WHERE assistant_governor = ? AND ag_phone IS NOT NULL LIMIT 1`
+    ).get(ag_name);
+    if (!agClub || !agClub.ag_phone) return res.status(404).json({ error: 'AG phone not found' });
+
+    const pendingRows = await db.prepare(`
+      SELECT c.name FROM clubs c
+      LEFT JOIN (
+        SELECT club_name FROM registrations WHERE payment_status = 'success' GROUP BY club_name
+      ) r ON r.club_name = c.name
+      WHERE c.assistant_governor = ? AND c.active = 1 AND r.club_name IS NULL
+      ORDER BY c.name ASC
+    `).all(ag_name);
+    const pendingClubs = pendingRows.map(r => r.name).join(', ');
+    if (!pendingClubs) return res.status(400).json({ error: 'No pending clubs for this AG' });
+
+    const sent = await sendWhatsAppAGReminder({ agName: ag_name, agPhone: agClub.ag_phone, pendingClubs });
+    if (!sent) return res.status(500).json({ error: 'Failed to send WhatsApp message' });
+
+    await db.prepare(`INSERT INTO reminder_log (ag_name) VALUES (?)`).run(ag_name);
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error('Error sending AG reminder:', error);
+    res.status(500).json({ error: 'Failed to send reminder' });
   }
 });
 
