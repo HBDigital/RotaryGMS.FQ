@@ -76,9 +76,16 @@ const AdminDashboard: React.FC = () => {
   const [clubFilter, setClubFilter] = useState('');
   const [newClubAG, setNewClubAG] = useState('');
 
+  const DESIGNATION_SHORT: Record<string, string> = {
+    'President 2025-26': 'Pres\'26',
+    'President Elect(2026-27)': 'PE\'27',
+    'Treasurer 2026-27': 'Treas',
+    'Secretary elect 2026-27': 'Secy',
+    'TRF Chair 2026-27': 'TRF',
+  };
   interface DistrictClub {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
-    delegate_count: number; registration_count: number; receipt_nos: string | null;
+    required_present: string[]; required_missing: string[];
   }
   interface AG { name: string; phone: string | null; reminder_sent_today: boolean; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
   interface DD { name: string; assistant_governors: AG[]; }
@@ -705,9 +712,9 @@ const AdminDashboard: React.FC = () => {
                     />
                     <button
                       onClick={() => {
-                        const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Delegates', 'Receipt']];
+                        const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Designations Present', 'Designations Missing']];
                         districtReport.forEach(z => z.district_directors.forEach(dd => dd.assistant_governors.forEach(ag => ag.clubs.forEach(c => {
-                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, String(c.delegate_count), String(c.registration_count), c.receipt_nos || '']);
+                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, c.required_present.join('; '), c.required_missing.join('; ')]);
                         }))));
                         const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
                         const blob = new Blob([csv], { type: 'text/csv' });
@@ -816,11 +823,19 @@ const AdminDashboard: React.FC = () => {
                                                     </span>
                                                     {club.ggr && <span className="text-xs text-gray-400">(GGR: {club.ggr})</span>}
                                                   </div>
-                                                  <span className="text-xs text-gray-500">
-                                                    {club.status === 'not_registered' ? 'Not registered' :
-                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''}`
-                                                    }
-                                                    {club.status === 'partial' && <span className="ml-1 text-orange-500">(need ≥2)</span>}
+                                                  <span className="text-xs">
+                                                    {club.status === 'not_registered' ? (
+                                                      <span className="text-gray-400">Not registered</span>
+                                                    ) : (
+                                                      <span className="flex flex-wrap gap-1">
+                                                        {club.required_present.map(d => (
+                                                          <span key={d} className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
+                                                        ))}
+                                                        {club.required_missing.map(d => (
+                                                          <span key={d} className="bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
+                                                        ))}
+                                                      </span>
+                                                    )}
                                                   </span>
                                                 </li>
                                               ))}

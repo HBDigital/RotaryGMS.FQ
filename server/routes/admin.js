@@ -277,33 +277,27 @@ router.post('/admin/clubs', async (req, res) => {
 // Admin: district report — clubs grouped by DD → AG with compliance status
 router.get('/admin/district-report', async (req, res) => {
   try {
+    const REQUIRED_DESIGNATIONS = [
+      'President 2025-26',
+      'President Elect(2026-27)',
+      'Treasurer 2026-27',
+      'Secretary elect 2026-27',
+      'TRF Chair 2026-27',
+    ];
+    const inClause = REQUIRED_DESIGNATIONS.map(() => '?').join(', ');
+
     const clubs = await db.prepare(`
       SELECT
-        c.id,
-        c.name,
-        c.zone,
-        c.district_director,
-        c.assistant_governor,
-        c.ggr,
-        r.total_delegates AS delegate_count,
-        r.registration_count,
-        r.receipt_nos,
-        r.payment_status
+        c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone,
+        GROUP_CONCAT(DISTINCT d.delegate_designation) AS found_designations
       FROM clubs c
-      LEFT JOIN (
-        SELECT
-          club_name,
-          SUM(delegate_count)  AS total_delegates,
-          COUNT(*)             AS registration_count,
-          GROUP_CONCAT(receipt_no, ', ') AS receipt_nos,
-          'success'            AS payment_status
-        FROM registrations
-        WHERE payment_status = 'success'
-        GROUP BY club_name
-      ) r ON r.club_name = c.name
+      LEFT JOIN registrations r ON r.club_name = c.name AND r.payment_status = 'success'
+      LEFT JOIN delegates d ON d.registration_id = r.id
+        AND d.delegate_designation IN (${inClause})
       WHERE c.active = 1 AND c.district_director IS NOT NULL
+      GROUP BY c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone
       ORDER BY c.zone ASC, c.district_director ASC, c.assistant_governor ASC, c.name ASC
-    `).all();
+    `).all(...REQUIRED_DESIGNATIONS);
 
     const remindedToday = await db.prepare(`
       SELECT DISTINCT ag_name FROM reminder_log
@@ -336,15 +330,15 @@ router.get('/admin/district-report', async (req, res) => {
         };
       }
 
-      const isCompliant = club.payment_status === 'success' && club.delegate_count >= 2;
-      const isPartial   = club.payment_status === 'success' && club.delegate_count < 2;
+      const found = club.found_designations ? club.found_designations.split(',') : [];
+      const missing = REQUIRED_DESIGNATIONS.filter(d => !found.includes(d));
+      const status = found.length === REQUIRED_DESIGNATIONS.length ? 'completed' : found.length > 0 ? 'partial' : 'not_registered';
       zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
         name: club.name,
         ggr: club.ggr,
-        status: isCompliant ? 'completed' : isPartial ? 'partial' : 'not_registered',
-        delegate_count: club.delegate_count || 0,
-        registration_count: club.registration_count || 0,
-        receipt_nos: club.receipt_nos || null,
+        status,
+        required_present: found,
+        required_missing: missing,
       });
     }
 
