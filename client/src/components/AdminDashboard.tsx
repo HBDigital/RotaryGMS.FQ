@@ -472,7 +472,7 @@ const AdminDashboard: React.FC = () => {
                           </div>
                           <div className="text-xs text-gray-500 space-y-1">
                             <p><span className="font-medium">Payment ID:</span> {transaction.razorpay_payment_id || '-'}</p>
-                            <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString()}</p>
+                            <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
                           </div>
                         </div>
                       ))}
@@ -500,7 +500,7 @@ const AdminDashboard: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">₹{transaction.amount.toLocaleString()}</td>
                               <td className="px-4 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono text-xs">{transaction.razorpay_payment_id || '-'}</td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(transaction.created_at).toLocaleString()}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
                             </tr>
                           ))}
                         </tbody>
