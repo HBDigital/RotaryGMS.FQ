@@ -332,7 +332,7 @@ router.get('/admin/district-report', async (req, res) => {
 
       const found = club.found_designations ? club.found_designations.split(',') : [];
       const missing = REQUIRED_DESIGNATIONS.filter(d => !found.includes(d));
-      const status = found.length === REQUIRED_DESIGNATIONS.length ? 'completed' : found.length > 0 ? 'partial' : 'not_registered';
+      const status = found.length >= 2 ? 'completed' : found.length === 1 ? 'partial' : 'not_registered';
       zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
         name: club.name,
         ggr: club.ggr,
