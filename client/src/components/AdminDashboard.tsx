@@ -449,28 +449,12 @@ const AdminDashboard: React.FC = () => {
                     ) : '🔄 Sync Payments'}
                   </button>
                 </div>
-                {reconcileResult && (
-                  <div className={`mb-4 p-4 rounded-lg text-sm ${
-                    reconcileResult.reconciled.length > 0 ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200'
-                  }`}>
-                    {reconcileResult.reconciled.length > 0 ? (
-                      <>
-                        <p className="font-semibold text-green-800 mb-1">✅ {reconcileResult.reconciled.length} payment(s) reconciled:</p>
-                        {reconcileResult.reconciled.map((r, i) => (
-                          <p key={i} className="text-green-700">{r.name} → {r.receipt_no}</p>
-                        ))}
-                      </>
-                    ) : (
-                      <p className="text-gray-600">No pending payments found with captured status.</p>
-                    )}
-                    {reconcileResult.failed.length > 0 && (
-                      <div className="mt-2">
-                        <p className="font-semibold text-orange-700">{reconcileResult.failed.length} not reconciled:</p>
-                        {reconcileResult.failed.map((f, i) => (
-                          <p key={i} className="text-orange-600">{f.name}: {f.reason}</p>
-                        ))}
-                      </div>
-                    )}
+                {reconcileResult && reconcileResult.reconciled.length > 0 && (
+                  <div className="mb-4 p-4 rounded-lg text-sm bg-green-50 border border-green-200">
+                    <p className="font-semibold text-green-800 mb-1">✅ {reconcileResult.reconciled.length} payment(s) reconciled:</p>
+                    {reconcileResult.reconciled.map((r, i) => (
+                      <p key={i} className="text-green-700">{r.name} → {r.receipt_no}</p>
+                    ))}
                   </div>
                 )}
                 {txLoading ? (
