@@ -99,8 +99,8 @@ const AdminDashboard: React.FC = () => {
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
-  const [reconciling, setReconciling] = useState(false);
-  const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[] } | null>(null);
+  const REFRESH_INTERVAL = 300;
+  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -113,24 +113,22 @@ const AdminDashboard: React.FC = () => {
     fetchDistrictReport();
   }, [navigate]);
 
-  const handleReconcile = async () => {
-    setReconciling(true);
-    setReconcileResult(null);
-    try {
-      const res = await fetch(`${API_URL}/admin/reconcile-payments`, { method: 'POST' });
-      const data = await res.json();
-      setReconcileResult(data);
-      if (data.reconciled?.length > 0) {
-        fetchDashboardData();
-        fetchTransactions(1);
-        fetchClubStatus();
-      }
-    } catch {
-      alert('Failed to sync payments');
-    } finally {
-      setReconciling(false);
-    }
-  };
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          fetchDashboardData();
+          fetchTransactions(1);
+          fetchClubStatus();
+          fetchDistrictReport();
+          fetch(`${API_URL}/admin/reconcile-payments`, { method: 'POST' }).catch(() => {});
+          return REFRESH_INTERVAL;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
 
   const sendAgReminder = async (agName: string) => {
     setReminderStatus(prev => ({ ...prev, [agName]: 'sending' }));
@@ -446,24 +444,11 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Recent Transactions</h2>
-                  <button
-                    onClick={handleReconcile}
-                    disabled={reconciling}
-                    className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-orange-600 disabled:opacity-50"
-                  >
-                    {reconciling ? (
-                      <><span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span> Syncing…</>
-                    ) : '🔄 Sync Payments'}
-                  </button>
+                  <span className="text-xs text-gray-400 flex items-center gap-1">
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                    Refresh in {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
+                  </span>
                 </div>
-                {reconcileResult && reconcileResult.reconciled.length > 0 && (
-                  <div className="mb-4 p-4 rounded-lg text-sm bg-green-50 border border-green-200">
-                    <p className="font-semibold text-green-800 mb-1">✅ {reconcileResult.reconciled.length} payment(s) reconciled:</p>
-                    {reconcileResult.reconciled.map((r, i) => (
-                      <p key={i} className="text-green-700">{r.name} → {r.receipt_no}</p>
-                    ))}
-                  </div>
-                )}
                 {txLoading ? (
                   <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
                 ) : (
