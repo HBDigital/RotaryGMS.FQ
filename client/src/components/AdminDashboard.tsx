@@ -77,10 +77,10 @@ const AdminDashboard: React.FC = () => {
   const [newClubAG, setNewClubAG] = useState('');
 
   interface DistrictClub {
-    name: string; ggr: string | null; status: 'compliant' | 'partial' | 'not_registered';
-    delegate_count: number; receipt_no: string | null;
+    name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
+    delegate_count: number; registration_count: number; receipt_nos: string | null;
   }
-  interface AG { name: string; total: number; compliant: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
+  interface AG { name: string; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
   interface DD { name: string; assistant_governors: AG[]; }
   interface ZoneReport { zone: number; district_directors: DD[]; }
   interface AgListItem { assistant_governor: string; district_director: string; zone: number; }
@@ -574,7 +574,6 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
                 ) : clubStatus && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* NOT REGISTERED */}
                     <div>
                       <h3 className="text-base font-semibold text-red-700 mb-3 flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-red-500 inline-block"></span>
@@ -597,7 +596,6 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* REGISTERED */}
                     <div>
                       <h3 className="text-base font-semibold text-green-700 mb-3 flex items-center gap-2">
                         <span className="w-3 h-3 rounded-full bg-green-500 inline-block"></span>
@@ -646,7 +644,7 @@ const AdminDashboard: React.FC = () => {
                       onClick={() => {
                         const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Delegates', 'Receipt']];
                         districtReport.forEach(z => z.district_directors.forEach(dd => dd.assistant_governors.forEach(ag => ag.clubs.forEach(c => {
-                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, String(c.delegate_count), c.receipt_no || '']);
+                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, String(c.delegate_count), String(c.registration_count), c.receipt_nos || '']);
                         }))));
                         const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
                         const blob = new Blob([csv], { type: 'text/csv' });
@@ -676,7 +674,7 @@ const AdminDashboard: React.FC = () => {
                             const ddKey = `${zone.zone}-${dd.name}`;
                             const ddOpen = expandedDDs[ddKey] !== false;
                             const ddTotal = dd.assistant_governors.reduce((s, ag) => s + ag.total, 0);
-                            const ddCompliant = dd.assistant_governors.reduce((s, ag) => s + ag.compliant, 0);
+                            const ddCompleted = dd.assistant_governors.reduce((s, ag) => s + ag.completed, 0);
                             const ddNot = dd.assistant_governors.reduce((s, ag) => s + ag.not_registered + ag.partial, 0);
                             return (
                               <div key={dd.name} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -687,7 +685,7 @@ const AdminDashboard: React.FC = () => {
                                   <div>
                                     <span className="font-semibold text-gray-900 text-base">District Director: {dd.name}</span>
                                     <div className="flex gap-3 mt-1">
-                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ddCompliant} Compliant</span>
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ddCompleted} Completed</span>
                                       <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ddNot} Pending</span>
                                       <span className="text-xs text-gray-500">{ddTotal} clubs total</span>
                                     </div>
@@ -715,7 +713,7 @@ const AdminDashboard: React.FC = () => {
                                           >
                                             <div className="flex items-center gap-3">
                                               <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
-                                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.compliant}/{ag.total}</span>
+                                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.completed}/{ag.total}</span>
                                               {ag.not_registered + ag.partial > 0 && (
                                                 <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
                                                   {ag.not_registered + ag.partial} not done
@@ -730,18 +728,22 @@ const AdminDashboard: React.FC = () => {
                                               {visibleClubs.map(club => (
                                                 <li key={club.name} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                                   <div className="flex items-center gap-2">
-                                                    {club.status === 'compliant' && <span className="text-green-500 font-bold">✓</span>}
+                                                    {club.status === 'completed' && <span className="text-green-500 font-bold">✓</span>}
                                                     {club.status === 'partial'   && <span className="text-orange-500 font-bold">⚠</span>}
                                                     {club.status === 'not_registered' && <span className="text-red-500 font-bold">✗</span>}
-                                                    <span className={club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-gray-800'}>
+                                                    <span className={club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-green-800 font-medium'}>
                                                       {club.name}
                                                     </span>
                                                     {club.ggr && <span className="text-xs text-gray-400">(GGR: {club.ggr})</span>}
                                                   </div>
                                                   <span className="text-xs text-gray-500">
                                                     {club.status === 'not_registered' ? 'Not registered' :
-                                                      club.status === 'partial' ? `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} (need ≥2)` :
-                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} · ${club.receipt_no}`}
+                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} · ${club.registration_count} registration${club.registration_count !== 1 ? 's' : ''}`
+                                                    }
+                                                    {club.status !== 'not_registered' && club.receipt_nos && (
+                                                      <span className="ml-1 text-gray-400">({club.receipt_nos})</span>
+                                                    )}
+                                                    {club.status === 'partial' && <span className="ml-1 text-orange-500">(need ≥2)</span>}
                                                   </span>
                                                 </li>
                                               ))}

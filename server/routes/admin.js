@@ -217,15 +217,21 @@ router.get('/admin/district-report', async (req, res) => {
         c.district_director,
         c.assistant_governor,
         c.ggr,
-        r.delegate_count,
-        r.receipt_no,
+        r.total_delegates AS delegate_count,
+        r.registration_count,
+        r.receipt_nos,
         r.payment_status
       FROM clubs c
       LEFT JOIN (
-        SELECT club_name, delegate_count, receipt_no, payment_status
+        SELECT
+          club_name,
+          SUM(delegate_count)  AS total_delegates,
+          COUNT(*)             AS registration_count,
+          GROUP_CONCAT(receipt_no, ', ') AS receipt_nos,
+          'success'            AS payment_status
         FROM registrations
         WHERE payment_status = 'success'
-        ORDER BY id DESC
+        GROUP BY club_name
       ) r ON r.club_name = c.name
       WHERE c.active = 1 AND c.district_director IS NOT NULL
       ORDER BY c.zone ASC, c.district_director ASC, c.assistant_governor ASC, c.name ASC
@@ -256,9 +262,10 @@ router.get('/admin/district-report', async (req, res) => {
       zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
         name: club.name,
         ggr: club.ggr,
-        status: isCompliant ? 'compliant' : isPartial ? 'partial' : 'not_registered',
+        status: isCompliant ? 'completed' : isPartial ? 'partial' : 'not_registered',
         delegate_count: club.delegate_count || 0,
-        receipt_no: club.receipt_no || null,
+        registration_count: club.registration_count || 0,
+        receipt_nos: club.receipt_nos || null,
       });
     }
 
