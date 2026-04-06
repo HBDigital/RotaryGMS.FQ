@@ -105,6 +105,10 @@ async function initDatabase() {
     try { db.run('ALTER TABLE registrations ADD COLUMN receipt_no TEXT'); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE registrations ADD COLUMN email_status TEXT DEFAULT 'pending'"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE registrations ADD COLUMN whatsapp_status TEXT DEFAULT 'pending'"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN zone INTEGER DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN district_director TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN assistant_governor TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN ggr TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
 
     // Seed clubs if table is empty (use db.exec for sync count check)
@@ -135,7 +139,87 @@ async function initDatabase() {
       for (const name of clubNames) {
         db.run("INSERT OR IGNORE INTO clubs (name) VALUES (?)", [name]);
       }
-      console.log(`✅ Seeded ${clubNames.length} clubs`);
+      console.log(`\u2705 Seeded ${clubNames.length} clubs`);
+    }
+
+    // Seed district hierarchy (DD/AG/GGR) assignments for clubs
+    const hierarchyResult = db.exec("SELECT COUNT(*) FROM clubs WHERE district_director IS NOT NULL");
+    const assignedCount = hierarchyResult.length > 0 ? hierarchyResult[0].values[0][0] : 0;
+    if (assignedCount === 0) {
+      const clubAssignments = [
+        // Zone 1 — DD: Rtn. Dr. Vijayakumar N — AG: Rtn. Maruthachalam S
+        ['Coimbatore Gaalaxy', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Krishnakumar R'],
+        ['Thondamuthur',       1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Krishnakumar R'],
+        ['Coimbatore Millennium', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Muthukumar K'],
+        ['Coimbatore West',    1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Muthukumar K'],
+        ['Coimbatore Downtown',1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Muthukumar K'],
+        // Zone 1 — DD: Rtn. Dr. Vijayakumar N — AG: Rtn. Paul William W
+        ['Coimbatore Ikons',   1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Paul William W', 'Rtn. Venkatesh D'],
+        ['Coimbatore',         1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Paul William W', 'Rtn. Venkatesh D'],
+        ['Coimbatore Phoenix', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Paul William W', 'Rtn. Dr. Sathish Kumar M'],
+        ['Coimbatore Blossom', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Paul William W', 'Rtn. Dr. Sathish Kumar M'],
+        ['Coimbatore Centennial',1,'Rtn. Dr. Vijayakumar N','Rtn. Paul William W', 'Rtn. Dr. Sathish Kumar M'],
+        // Zone 1 — DD: Rtn. Dr. Vijayakumar N — AG: Rtn. Dr. Fredricks John
+        ['Coimbatore Elite',   1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Dr. Fredricks John', 'Rtn. Dr. Nirmala Natarajan'],
+        ['Coimbatore Satellite',1,'Rtn. Dr. Vijayakumar N', 'Rtn. Dr. Fredricks John', 'Rtn. Dr. Nirmala Natarajan'],
+        ['Coimbatore Heritage',1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Dr. Fredricks John', 'Rtn. Ramkumar A'],
+        ['Coimbatore Vadavalli',1,'Rtn. Dr. Vijayakumar N', 'Rtn. Dr. Fredricks John', 'Rtn. Ramkumar A'],
+        // Zone 1 — DD: Rtn. Manivanan T — AG: Rtn. Bhavik Momaya
+        ['Coimbatore Meridian',1, 'Rtn. Manivanan T', 'Rtn. Bhavik Momaya', 'Rtn. Rajadurai S'],
+        ["Coimbatore D'elite", 1, 'Rtn. Manivanan T', 'Rtn. Bhavik Momaya', 'Rtn. Rajadurai S'],
+        ['Coimbatore City',    1, 'Rtn. Manivanan T', 'Rtn. Bhavik Momaya', 'Rtn. Rajadurai S'],
+        ['Coimbatore Aalam',   1, 'Rtn. Manivanan T', 'Rtn. Bhavik Momaya', 'Rtn. Jayamurali B'],
+        ['Coimbatore Aakruthi',1, 'Rtn. Manivanan T', 'Rtn. Bhavik Momaya', 'Rtn. Jayamurali B'],
+        // Zone 1 — DD: Rtn. Manivanan T — AG: Rtn. Dr. Deepana S N
+        ['Coimbatore Texcity', 1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Raj Siddarth'],
+        ['Metro Dynamix',      1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Raj Siddarth'],
+        ['Coimbatore Legend',  1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
+        ['Coimbatore Saicity', 1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
+        ['Coimbatore Central', 1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
+        // Zone 1 — DD: Rtn. Manivanan T — AG: Rtn. Vijay C R
+        ['Coimbatore Monarks', 1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Kumarpal K Daga'],
+        ['Coimbatore Zenith',  1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Manikantan VAJ'],
+        ['Coimbatore Aram',    1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Manikantan VAJ'],
+        // Zone 2 — DD: Rtn. Nagaraj K C — AG: Rtn. Krishna Murthy Rao S
+        ['Coimbatore East',    2, 'Rtn. Nagaraj K C', 'Rtn. Krishna Murthy Rao S', 'Rtn. Saravanan R'],
+        ['Coimbatore Green City',2,'Rtn. Nagaraj K C','Rtn. Krishna Murthy Rao S', 'Rtn. Saravanan R'],
+        ['Coimbatore Unicorns',2, 'Rtn. Nagaraj K C', 'Rtn. Krishna Murthy Rao S', 'Rtn. Saravanan R'],
+        ['Coimbatore Smart City',2,'Rtn. Nagaraj K C','Rtn. Krishna Murthy Rao S', 'Rtn. Ramesh C P'],
+        ['Coimbatore Cyber City',2,'Rtn. Nagaraj K C','Rtn. Krishna Murthy Rao S', 'Rtn. Ramesh C P'],
+        // Zone 2 — DD: Rtn. Nagaraj K C — AG: Rtn. Prabhu S
+        ['Coimbatore New Town',2, 'Rtn. Nagaraj K C', 'Rtn. Prabhu S', 'Rtn. Kaneshan R D'],
+        ['Kovaipudur',         2, 'Rtn. Nagaraj K C', 'Rtn. Prabhu S', 'Rtn. Srinivasan B'],
+        ['E-Club of Coimbatore Pride',2,'Rtn. Nagaraj K C','Rtn. Prabhu S','Rtn. Srinivasan B'],
+        ['Coimbatore Mid-Town',2, 'Rtn. Nagaraj K C', 'Rtn. Prabhu S', 'Rtn. Srinivasan B'],
+        ['Coimbatore United',  2, 'Rtn. Nagaraj K C', 'Rtn. Prabhu S', 'Rtn. Kaneshan R D'],
+        // Zone 2 — DD: Rtn. Nagaraj K C — AG: Rtn. John Singarayar A
+        ['Coimbatore Infra',   2, 'Rtn. Nagaraj K C', 'Rtn. John Singarayar A', 'Rtn. Kesavaraj V N'],
+        ['Kovai',              2, 'Rtn. Nagaraj K C', 'Rtn. John Singarayar A', 'Rtn. Kesavaraj V N'],
+        ['Coimbatore Town',    2, 'Rtn. Nagaraj K C', 'Rtn. John Singarayar A', 'Rtn. Sathish Kumar R'],
+        ['Coimbatore South',   2, 'Rtn. Nagaraj K C', 'Rtn. John Singarayar A', 'Rtn. Sathish Kumar R'],
+        // Zone 2 — DD: Rtn. Swaminathan S G — AG: Rtn. Gurpreet Singh
+        ['Coimbatore Metropolis',2,'Rtn. Swaminathan S G','Rtn. Gurpreet Singh','Rtn. Vijayakumar R'],
+        ['E-club of Coimbatore Changemakers',2,'Rtn. Swaminathan S G','Rtn. Gurpreet Singh','Rtn. Vijayakumar R'],
+        ['Coimbatore Manchester',2,'Rtn. Swaminathan S G','Rtn. Gurpreet Singh','Rtn. Vijayakumar R'],
+        ['Coimbatore Royals',  2, 'Rtn. Swaminathan S G', 'Rtn. Gurpreet Singh', 'Rtn. Vadivel R'],
+        ['Coimbatore Cosmopolitan',2,'Rtn. Swaminathan S G','Rtn. Gurpreet Singh','Rtn. Vadivel R'],
+        // Zone 2 — DD: Rtn. Swaminathan S G — AG: Rtn. Ramakrishnan M
+        ['Coimbatore North',   2, 'Rtn. Swaminathan S G', 'Rtn. Ramakrishnan M', 'Rtn. Prakash Kuttappan'],
+        ['Coimbatore Wind City',2,'Rtn. Swaminathan S G','Rtn. Ramakrishnan M','Rtn. Vijayakumar R'],
+        ['Coimbatore Industrial City',2,'Rtn. Swaminathan S G','Rtn. Ramakrishnan M','Rtn. Vijayakumar R'],
+        // Zone 2 — DD: Rtn. Swaminathan S G — AG: Rtn. Dr. Rohini Sharma
+        ['Coimbatore Mitrutva',2, 'Rtn. Swaminathan S G', 'Rtn. Dr. Rohini Sharma', 'Rtn. Bharat D Shah'],
+        ['Coimbatore Cotton City',2,'Rtn. Swaminathan S G','Rtn. Dr. Rohini Sharma','Rtn. Bharat D Shah'],
+        ['Coimbatore Spectrum',2, 'Rtn. Swaminathan S G', 'Rtn. Dr. Rohini Sharma', 'Rtn. Gokula Krishnan A'],
+        ['Coimbatore Uptown',  2, 'Rtn. Swaminathan S G', 'Rtn. Dr. Rohini Sharma', 'Rtn. Gokula Krishnan A'],
+      ];
+      for (const [name, zone, dd, ag, ggr] of clubAssignments) {
+        db.run(
+          "UPDATE clubs SET zone = ?, district_director = ?, assistant_governor = ?, ggr = ? WHERE name = ?",
+          [zone, dd, ag, ggr, name]
+        );
+      }
+      console.log(`\u2705 Seeded district hierarchy for ${clubAssignments.length} clubs`);
     }
 
     saveDatabase();

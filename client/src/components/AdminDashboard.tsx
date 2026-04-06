@@ -63,7 +63,7 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'clubs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'clubs' | 'district'>('overview');
 
   interface ClubStatus {
     unregistered: { id: number; name: string }[];
@@ -74,6 +74,23 @@ const AdminDashboard: React.FC = () => {
   const [newClubName, setNewClubName] = useState('');
   const [addingClub, setAddingClub] = useState(false);
   const [clubFilter, setClubFilter] = useState('');
+  const [newClubAG, setNewClubAG] = useState('');
+
+  interface DistrictClub {
+    name: string; ggr: string | null; status: 'compliant' | 'partial' | 'not_registered';
+    delegate_count: number; receipt_no: string | null;
+  }
+  interface AG { name: string; total: number; compliant: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
+  interface DD { name: string; assistant_governors: AG[]; }
+  interface ZoneReport { zone: number; district_directors: DD[]; }
+  interface AgListItem { assistant_governor: string; district_director: string; zone: number; }
+
+  const [districtReport, setDistrictReport] = useState<ZoneReport[]>([]);
+  const [agList, setAgList] = useState<AgListItem[]>([]);
+  const [districtLoading, setDistrictLoading] = useState(false);
+  const [districtFilter, setDistrictFilter] = useState('');
+  const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
+  const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -83,6 +100,7 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
     fetchTransactions(1);
     fetchClubStatus();
+    fetchDistrictReport();
   }, [navigate]);
 
   const handleLogout = () => {
@@ -102,6 +120,19 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchDistrictReport = async () => {
+    try {
+      setDistrictLoading(true);
+      const res = await fetch(`${API_URL}/admin/district-report`).then(r => r.json());
+      setDistrictReport(res.report || []);
+      setAgList(res.ag_list || []);
+    } catch (error) {
+      console.error('Error fetching district report:', error);
+    } finally {
+      setDistrictLoading(false);
+    }
+  };
+
   const handleAddClub = async () => {
     if (!newClubName.trim()) return;
     try {
@@ -109,10 +140,12 @@ const AdminDashboard: React.FC = () => {
       await fetch(`${API_URL}/admin/clubs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newClubName.trim() }),
+        body: JSON.stringify({ name: newClubName.trim(), assistant_governor: newClubAG || undefined }),
       });
       setNewClubName('');
+      setNewClubAG('');
       fetchClubStatus();
+      fetchDistrictReport();
     } catch (error) {
       console.error('Error adding club:', error);
       alert('Failed to add club');
@@ -344,6 +377,16 @@ const AdminDashboard: React.FC = () => {
                   </span>
                 )}
               </button>
+              <button
+                onClick={() => { setActiveTab('district'); fetchDistrictReport(); }}
+                className={`px-6 py-4 text-sm font-medium ${
+                  activeTab === 'district'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                District Report
+              </button>
             </nav>
           </div>
 
@@ -450,15 +493,27 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       )}
                     </h2>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2 items-center">
                       <input
                         type="text"
                         value={newClubName}
                         onChange={(e) => setNewClubName(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddClub()}
-                        placeholder="Add new club name"
+                        placeholder="Club name"
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
+                      <select
+                        value={newClubAG}
+                        onChange={(e) => setNewClubAG(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                      >
+                        <option value="">Assign to AG (optional)</option>
+                        {agList.map((ag, i) => (
+                          <option key={i} value={ag.assistant_governor}>
+                            {ag.assistant_governor} (Zone {ag.zone})
+                          </option>
+                        ))}
+                      </select>
                       <button
                         onClick={handleAddClub}
                         disabled={addingClub || !newClubName.trim()}
@@ -570,6 +625,139 @@ const AdminDashboard: React.FC = () => {
                         )}
                       </div>
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'district' && (
+              <div>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">District Report</h2>
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={districtFilter}
+                      onChange={(e) => setDistrictFilter(e.target.value)}
+                      placeholder="🔍 Filter by club or AG..."
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => {
+                        const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Delegates', 'Receipt']];
+                        districtReport.forEach(z => z.district_directors.forEach(dd => dd.assistant_governors.forEach(ag => ag.clubs.forEach(c => {
+                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, String(c.delegate_count), c.receipt_no || '']);
+                        }))));
+                        const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
+                        const blob = new Blob([csv], { type: 'text/csv' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a'); a.href = url;
+                        a.download = `district-report-${new Date().toISOString().slice(0,10)}.csv`;
+                        a.click();
+                      }}
+                      className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700"
+                    >
+                      📥 Export CSV
+                    </button>
+                  </div>
+                </div>
+
+                {districtLoading ? (
+                  <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
+                ) : districtReport.length === 0 ? (
+                  <p className="text-center text-gray-500 py-8">No district data available.</p>
+                ) : (
+                  <div className="space-y-6">
+                    {districtReport.map(zone => (
+                      <div key={zone.zone}>
+                        <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">Zone {zone.zone}</h3>
+                        <div className="space-y-4">
+                          {zone.district_directors.map(dd => {
+                            const ddKey = `${zone.zone}-${dd.name}`;
+                            const ddOpen = expandedDDs[ddKey] !== false;
+                            const ddTotal = dd.assistant_governors.reduce((s, ag) => s + ag.total, 0);
+                            const ddCompliant = dd.assistant_governors.reduce((s, ag) => s + ag.compliant, 0);
+                            const ddNot = dd.assistant_governors.reduce((s, ag) => s + ag.not_registered + ag.partial, 0);
+                            return (
+                              <div key={dd.name} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                <button
+                                  onClick={() => setExpandedDDs(prev => ({ ...prev, [ddKey]: !ddOpen }))}
+                                  className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 text-left"
+                                >
+                                  <div>
+                                    <span className="font-semibold text-gray-900 text-base">District Director: {dd.name}</span>
+                                    <div className="flex gap-3 mt-1">
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ddCompliant} Compliant</span>
+                                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ddNot} Pending</span>
+                                      <span className="text-xs text-gray-500">{ddTotal} clubs total</span>
+                                    </div>
+                                  </div>
+                                  <span className="text-gray-400 text-lg">{ddOpen ? '▲' : '▼'}</span>
+                                </button>
+
+                                {ddOpen && (
+                                  <div className="divide-y divide-gray-100">
+                                    {dd.assistant_governors.map(ag => {
+                                      const agKey = `${zone.zone}-${dd.name}-${ag.name}`;
+                                      const agOpen = expandedAGs[agKey] !== false;
+                                      const filterLower = districtFilter.toLowerCase();
+                                      const visibleClubs = ag.clubs.filter(c =>
+                                        !filterLower ||
+                                        c.name.toLowerCase().includes(filterLower) ||
+                                        ag.name.toLowerCase().includes(filterLower)
+                                      );
+                                      if (filterLower && visibleClubs.length === 0) return null;
+                                      return (
+                                        <div key={ag.name} className="bg-white">
+                                          <button
+                                            onClick={() => setExpandedAGs(prev => ({ ...prev, [agKey]: !agOpen }))}
+                                            className="w-full flex items-center justify-between px-5 py-3 hover:bg-blue-50 text-left"
+                                          >
+                                            <div className="flex items-center gap-3">
+                                              <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
+                                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.compliant}/{ag.total}</span>
+                                              {ag.not_registered + ag.partial > 0 && (
+                                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                                  {ag.not_registered + ag.partial} not done
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-gray-400 text-sm">{agOpen ? '▲' : '▼'}</span>
+                                          </button>
+
+                                          {agOpen && (
+                                            <ul className="px-5 pb-3 space-y-1">
+                                              {visibleClubs.map(club => (
+                                                <li key={club.name} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                                                  <div className="flex items-center gap-2">
+                                                    {club.status === 'compliant' && <span className="text-green-500 font-bold">✓</span>}
+                                                    {club.status === 'partial'   && <span className="text-orange-500 font-bold">⚠</span>}
+                                                    {club.status === 'not_registered' && <span className="text-red-500 font-bold">✗</span>}
+                                                    <span className={club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-gray-800'}>
+                                                      {club.name}
+                                                    </span>
+                                                    {club.ggr && <span className="text-xs text-gray-400">(GGR: {club.ggr})</span>}
+                                                  </div>
+                                                  <span className="text-xs text-gray-500">
+                                                    {club.status === 'not_registered' ? 'Not registered' :
+                                                      club.status === 'partial' ? `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} (need ≥2)` :
+                                                      `${club.delegate_count} delegate${club.delegate_count !== 1 ? 's' : ''} · ${club.receipt_no}`}
+                                                  </span>
+                                                </li>
+                                              ))}
+                                            </ul>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </div>

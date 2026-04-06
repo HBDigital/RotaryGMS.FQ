@@ -185,13 +185,102 @@ router.get('/clubs', async (req, res) => {
 // Admin: add a new club
 router.post('/admin/clubs', async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, assistant_governor } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: 'Club name is required' });
-    await db.prepare(`INSERT OR IGNORE INTO clubs (name) VALUES (?)`).run(name.trim());
+
+    if (assistant_governor) {
+      const agInfo = await db.prepare(
+        `SELECT DISTINCT district_director, zone FROM clubs WHERE assistant_governor = ? LIMIT 1`
+      ).get(assistant_governor);
+      await db.prepare(
+        `INSERT OR IGNORE INTO clubs (name, assistant_governor, district_director, zone)
+         VALUES (?, ?, ?, ?)`
+      ).run(name.trim(), assistant_governor, agInfo?.district_director || null, agInfo?.zone || null);
+    } else {
+      await db.prepare(`INSERT OR IGNORE INTO clubs (name) VALUES (?)`).run(name.trim());
+    }
     res.status(201).json({ success: true, message: 'Club added' });
   } catch (error) {
     console.error('Error adding club:', error);
     res.status(500).json({ error: 'Failed to add club' });
+  }
+});
+
+// Admin: district report — clubs grouped by DD → AG with compliance status
+router.get('/admin/district-report', async (req, res) => {
+  try {
+    const clubs = await db.prepare(`
+      SELECT
+        c.id,
+        c.name,
+        c.zone,
+        c.district_director,
+        c.assistant_governor,
+        c.ggr,
+        r.delegate_count,
+        r.receipt_no,
+        r.payment_status
+      FROM clubs c
+      LEFT JOIN (
+        SELECT club_name, delegate_count, receipt_no, payment_status
+        FROM registrations
+        WHERE payment_status = 'success'
+        ORDER BY id DESC
+      ) r ON r.club_name = c.name
+      WHERE c.active = 1 AND c.district_director IS NOT NULL
+      ORDER BY c.zone ASC, c.district_director ASC, c.assistant_governor ASC, c.name ASC
+    `).all();
+
+    const agList = await db.prepare(`
+      SELECT DISTINCT assistant_governor, district_director, zone
+      FROM clubs
+      WHERE assistant_governor IS NOT NULL
+      ORDER BY zone ASC, district_director ASC, assistant_governor ASC
+    `).all();
+
+    // Group: zone → DD → AG → clubs
+    const zonesMap = {};
+    for (const club of clubs) {
+      const zone = club.zone || 0;
+      const dd = club.district_director || 'Unassigned';
+      const ag = club.assistant_governor || 'Unassigned';
+
+      if (!zonesMap[zone]) zonesMap[zone] = { zone, district_directors: {} };
+      if (!zonesMap[zone].district_directors[dd]) zonesMap[zone].district_directors[dd] = { name: dd, assistant_governors: {} };
+      if (!zonesMap[zone].district_directors[dd].assistant_governors[ag]) {
+        zonesMap[zone].district_directors[dd].assistant_governors[ag] = { name: ag, clubs: [] };
+      }
+
+      const isCompliant = club.payment_status === 'success' && club.delegate_count >= 2;
+      const isPartial   = club.payment_status === 'success' && club.delegate_count < 2;
+      zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
+        name: club.name,
+        ggr: club.ggr,
+        status: isCompliant ? 'compliant' : isPartial ? 'partial' : 'not_registered',
+        delegate_count: club.delegate_count || 0,
+        receipt_no: club.receipt_no || null,
+      });
+    }
+
+    // Flatten to array
+    const result = Object.values(zonesMap).map(z => ({
+      zone: z.zone,
+      district_directors: Object.values(z.district_directors).map(dd => ({
+        name: dd.name,
+        assistant_governors: Object.values(dd.assistant_governors).map(ag => {
+          const agClubs = ag.clubs;
+          const compliant = agClubs.filter(c => c.status === 'compliant').length;
+          const partial   = agClubs.filter(c => c.status === 'partial').length;
+          const not_reg   = agClubs.filter(c => c.status === 'not_registered').length;
+          return { name: ag.name, total: agClubs.length, compliant, partial, not_registered: not_reg, clubs: agClubs };
+        }),
+      })),
+    }));
+
+    res.status(200).json({ success: true, report: result, ag_list: agList });
+  } catch (error) {
+    console.error('Error fetching district report:', error);
+    res.status(500).json({ error: 'Failed to fetch district report' });
   }
 });
 
