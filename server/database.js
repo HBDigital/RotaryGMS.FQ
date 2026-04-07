@@ -116,6 +116,7 @@ async function initDatabase() {
     try { db.run("ALTER TABLE clubs ADD COLUMN assistant_governor TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ggr TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ag_phone TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT NULL"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
 
     // Seed AG phone numbers (always update so new entries get phones)
