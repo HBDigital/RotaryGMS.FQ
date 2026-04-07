@@ -101,6 +101,8 @@ const AdminDashboard: React.FC = () => {
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
   const REFRESH_INTERVAL = 300;
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
+  const [reconciling, setReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[]; total_checked: number } | null>(null);
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -129,6 +131,25 @@ const AdminDashboard: React.FC = () => {
     }, 1000);
     return () => clearInterval(tick);
   }, []);
+
+  const handleReconcile = async () => {
+    setReconciling(true);
+    setReconcileResult(null);
+    try {
+      const res = await fetch(`${API_URL}/admin/reconcile-payments`, { method: 'POST' });
+      const data = await res.json();
+      setReconcileResult(data);
+      if (data.reconciled?.length > 0) {
+        fetchDashboardData();
+        fetchTransactions(1);
+        fetchClubStatus();
+      }
+    } catch {
+      alert('Failed to sync payments');
+    } finally {
+      setReconciling(false);
+    }
+  };
 
   const sendAgReminder = async (agName: string) => {
     setReminderStatus(prev => ({ ...prev, [agName]: 'sending' }));
@@ -444,11 +465,36 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Recent Transactions</h2>
-                  <span className="text-xs text-gray-400 flex items-center gap-1">
-                    <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
-                    Refresh in {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 flex items-center gap-1">
+                      <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+                      Refresh in {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
+                    </span>
+                    <button
+                      onClick={handleReconcile}
+                      disabled={reconciling}
+                      className="flex items-center gap-2 bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600 disabled:opacity-50"
+                    >
+                      {reconciling ? (
+                        <><span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span> Syncing…</>
+                      ) : '🔄 Sync PG'}
+                    </button>
+                  </div>
                 </div>
+                {reconcileResult && (
+                  <div className={`mb-4 p-3 rounded-lg text-xs border ${reconcileResult.reconciled.length > 0 ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                    {reconcileResult.reconciled.length > 0 ? (
+                      <>
+                        <p className="font-semibold text-green-800 mb-1">✅ {reconcileResult.reconciled.length} payment(s) reconciled:</p>
+                        {reconcileResult.reconciled.map((r, i) => (
+                          <p key={i} className="text-green-700">{r.name} → {r.receipt_no}</p>
+                        ))}
+                      </>
+                    ) : (
+                      <p className="text-gray-500">✓ Checked {reconcileResult.total_checked ?? 0} pending order(s) — no new captures found.</p>
+                    )}
+                  </div>
+                )}
                 {txLoading ? (
                   <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
                 ) : (
