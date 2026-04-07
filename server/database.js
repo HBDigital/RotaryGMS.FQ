@@ -252,8 +252,53 @@ async function initDatabase() {
           [zone, dd, ag, ggr, name]
         );
       }
-      console.log(`\u2705 Seeded district hierarchy for ${clubAssignments.length} clubs`);
+      console.log(`✅ Seeded district hierarchy for ${clubAssignments.length} clubs`);
     }
+
+    // Always-run: insert missing clubs + assign Zone 3 and any omitted Zone 1/2 clubs
+    const extraClubNames = ['Coimbatore Siruvani', 'Coimbatore Sangamam', 'Coimbatore Rise', 'Coimbatore Global'];
+    for (const name of extraClubNames) {
+      db.run("INSERT OR IGNORE INTO clubs (name) VALUES (?)", [name]);
+    }
+
+    const zone3AndMissing = [
+      // Zone 1 missing clubs
+      ['Coimbatore Siruvani', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Dr. Fredricks John',  'Rtn. Ramkumar A'],
+      ['Coimbatore Sangamam', 1, 'Rtn. Manivanan T',       'Rtn. Dr. Deepana S N',     'Rtn. Raj Siddarth'],
+      // Zone 2 missing clubs
+      ['Coimbatore Rise',     2, 'Rtn. Swaminathan S G',   'Rtn. Ramakrishnan M',       'Rtn. Prakash Kuttappan'],
+      ['Coimbatore Global',   2, 'Rtn. Swaminathan S G',   'Rtn. Dr. Rohini Sharma',    'Rtn. Gokula Krishnan A'],
+      // Zone 3 — DD: Rtn. Rajesh P Nair — AG: Rtn. Dr. Muthukumar S
+      ['Palghat',                  3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Muthukumar S',        'Rtn. Dr. Sharath K B Menon'],
+      ['Palakkad ACE',             3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Muthukumar S',        'Rtn. Dr. Sharath K B Menon'],
+      ['Chittur Palghat',          3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Muthukumar S',        'Rtn. Ramanarayana E P'],
+      ['Palakkad Central',         3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Muthukumar S',        'Rtn. Ramanarayana E P'],
+      // Zone 3 — DD: Rtn. Rajesh P Nair — AG: Rtn. Dr. Latha Nair
+      ['Olavakkode',               3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Latha Nair',          'Rtn. Raj C'],
+      ['Palghat East',             3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Latha Nair',          'Rtn. Raj C'],
+      ['Palakkad Fort',            3, 'Rtn. Rajesh P Nair', 'Rtn. Dr. Latha Nair',          'Rtn. Raj C'],
+      // Zone 3 — DD: Rtn. Rajesh P Nair — AG: Rtn. Vinu Jacob Thomas
+      ['Mannarghat',               3, 'Rtn. Rajesh P Nair', 'Rtn. Vinu Jacob Thomas',       'Rtn. Mohanan S'],
+      ['Kalladikode',              3, 'Rtn. Rajesh P Nair', 'Rtn. Vinu Jacob Thomas',       'Rtn. Dr. Krishnakumar R C'],
+      ['Sreekrishnapuram',         3, 'Rtn. Rajesh P Nair', 'Rtn. Vinu Jacob Thomas',       'Rtn. Dr. Krishnakumar R C'],
+      // Zone 3 — DD: Rtn. Ramlal C B — AG: Rtn. Pratheesh Radhakrishnan
+      ['Vadakkencherry Malabar',   3, 'Rtn. Ramlal C B',   'Rtn. Pratheesh Radhakrishnan', 'Rtn. Asok Kumar K V'],
+      ['Nemmara',                  3, 'Rtn. Ramlal C B',   'Rtn. Pratheesh Radhakrishnan', 'Rtn. Asok Kumar K V'],
+      ['Pattambi',                 3, 'Rtn. Ramlal C B',   'Rtn. Pratheesh Radhakrishnan', 'Rtn. Suresh Kumar R'],
+      // Zone 3 — DD: Rtn. Ramlal C B — AG: Rtn. Sujith Chandran
+      ['Alathur Central',          3, 'Rtn. Ramlal C B',   'Rtn. Sujith Chandran',         'Rtn. Sunil Ammath'],
+      ['Ottapalam',                3, 'Rtn. Ramlal C B',   'Rtn. Sujith Chandran',         'Rtn. Sunil Ammath'],
+      ['Koduvayur',                3, 'Rtn. Ramlal C B',   'Rtn. Sujith Chandran',         'Rtn. Sudeep P R'],
+      // Zone 3 — DD: Rtn. Ramlal C B — AG: Rtn. Vijayan K V
+      ['Vadakkencherry',           3, 'Rtn. Ramlal C B',   'Rtn. Vijayan K V',             'Rtn. Haridasan V'],
+      ['Palakkad Green City',      3, 'Rtn. Ramlal C B',   'Rtn. Vijayan K V',             'Rtn. Haridasan V'],
+      ['Shoranur',                 3, 'Rtn. Ramlal C B',   'Rtn. Vijayan K V',             'Rtn. Ajith Erattakkulam'],
+    ];
+    for (const [name, zone, dd, ag, ggr] of zone3AndMissing) {
+      db.run("UPDATE clubs SET zone = ?, district_director = ?, assistant_governor = ?, ggr = ? WHERE name = ?",
+        [zone, dd, ag, ggr, name]);
+    }
+    console.log(`✅ Zone 3 + missing clubs hierarchy applied (${zone3AndMissing.length} clubs)`);
 
     saveDatabase();
     console.log('✅ Database initialized successfully');
