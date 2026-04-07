@@ -300,6 +300,12 @@ async function initDatabase() {
     }
     console.log(`✅ Zone 3 + missing clubs hierarchy applied (${zone3AndMissing.length} clubs)`);
 
+    // Re-apply phone numbers so newly-inserted clubs also get ag_phone
+    for (const [ag, phone] of agPhones) {
+      db.run("UPDATE clubs SET ag_phone = ? WHERE assistant_governor = ?", [phone, ag]);
+    }
+    console.log('✅ AG phone numbers re-applied after club inserts');
+
     saveDatabase();
     console.log('✅ Database initialized successfully');
     
