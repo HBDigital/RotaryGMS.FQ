@@ -13,8 +13,12 @@ const AdminLogin: React.FC = () => {
     setError('');
 
     if (credentials.username === 'vivek' && credentials.password === 'vivek') {
-      // Store login state in sessionStorage
       sessionStorage.setItem('adminLoggedIn', 'true');
+      sessionStorage.setItem('adminRole', 'admin');
+      navigate('/admin');
+    } else if (credentials.username === 'rid3206' && credentials.password === 'rid3206') {
+      sessionStorage.setItem('adminLoggedIn', 'true');
+      sessionStorage.setItem('adminRole', 'viewer');
       navigate('/admin');
     } else {
       setError('Invalid credentials');

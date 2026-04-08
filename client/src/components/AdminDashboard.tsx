@@ -104,6 +104,8 @@ const AdminDashboard: React.FC = () => {
   const [reconciling, setReconciling] = useState(false);
   const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[]; total_checked: number } | null>(null);
 
+  const isViewer = sessionStorage.getItem('adminRole') === 'viewer';
+
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
       navigate('/admin-login');
@@ -470,7 +472,7 @@ const AdminDashboard: React.FC = () => {
                       <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
                       Refresh in {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}
                     </span>
-                    <button
+                    {!isViewer && <button
                       onClick={handleReconcile}
                       disabled={reconciling}
                       className="flex items-center gap-2 bg-orange-500 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-orange-600 disabled:opacity-50"
@@ -478,7 +480,7 @@ const AdminDashboard: React.FC = () => {
                       {reconciling ? (
                         <><span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span> Syncing…</>
                       ) : '🔄 Sync PG'}
-                    </button>
+                    </button>}
                   </div>
                 </div>
                 {reconcileResult && (
@@ -827,7 +829,7 @@ const AdminDashboard: React.FC = () => {
                                                 if (rs === 'sent' || rs === 'cooldown') {
                                                   return <span className="text-xs text-gray-400 italic">Reminder sent today</span>;
                                                 }
-                                                return (
+                                                return isViewer ? null : (
                                                   <button
                                                     onClick={() => sendAgReminder(ag.name)}
                                                     disabled={rs === 'sending' || ag.not_registered + ag.partial === 0}
