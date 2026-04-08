@@ -105,6 +105,7 @@ const AdminDashboard: React.FC = () => {
   const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[]; total_checked: number } | null>(null);
 
   const isViewer = sessionStorage.getItem('adminRole') === 'viewer';
+  const formatISTDateTime = (value: string) => new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -116,6 +117,12 @@ const AdminDashboard: React.FC = () => {
     fetchClubStatus();
     fetchDistrictReport();
   }, [navigate]);
+
+  useEffect(() => {
+    if (isViewer && (activeTab === 'overview' || activeTab === 'clubs')) {
+      setActiveTab('registrations');
+    }
+  }, [isViewer, activeTab]);
 
   useEffect(() => {
     const tick = setInterval(() => {
@@ -337,7 +344,7 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {summary && (
+        {!isViewer && summary && (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-6 mb-8">
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
@@ -414,16 +421,18 @@ const AdminDashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow-md mb-8">
           <div className="border-b border-gray-200">
             <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`px-6 py-4 text-sm font-medium ${
-                  activeTab === 'overview'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Recent Transactions
-              </button>
+              {!isViewer && (
+                <button
+                  onClick={() => setActiveTab('overview')}
+                  className={`px-6 py-4 text-sm font-medium ${
+                    activeTab === 'overview'
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Recent Transactions
+                </button>
+              )}
               <button
                 onClick={() => setActiveTab('registrations')}
                 className={`px-6 py-4 text-sm font-medium ${
@@ -434,21 +443,23 @@ const AdminDashboard: React.FC = () => {
               >
                 All Registrations
               </button>
-              <button
-                onClick={() => { setActiveTab('clubs'); fetchClubStatus(); }}
-                className={`px-6 py-4 text-sm font-medium ${
-                  activeTab === 'clubs'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Club Status
-                {clubStatus && clubStatus.unregistered.length > 0 && (
-                  <span className="ml-2 bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                    {clubStatus.unregistered.length}
-                  </span>
-                )}
-              </button>
+              {!isViewer && (
+                <button
+                  onClick={() => { setActiveTab('clubs'); fetchClubStatus(); }}
+                  className={`px-6 py-4 text-sm font-medium ${
+                    activeTab === 'clubs'
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Club Status
+                  {clubStatus && clubStatus.unregistered.length > 0 && (
+                    <span className="ml-2 bg-red-100 text-red-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                      {clubStatus.unregistered.length}
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => { setActiveTab('district'); fetchDistrictReport(); }}
                 className={`px-6 py-4 text-sm font-medium ${
@@ -463,7 +474,7 @@ const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="p-6">
-            {activeTab === 'overview' && (
+            {!isViewer && activeTab === 'overview' && (
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Recent Transactions</h2>
@@ -520,7 +531,7 @@ const AdminDashboard: React.FC = () => {
                           </div>
                           <div className="text-xs text-gray-500 space-y-1">
                             <p><span className="font-medium">Payment ID:</span> {transaction.razorpay_payment_id || '-'}</p>
-                            <p><span className="font-medium">Date:</span> {new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</p>
+                            <p><span className="font-medium">Date:</span> {formatISTDateTime(transaction.created_at)}</p>
                           </div>
                         </div>
                       ))}
@@ -548,7 +559,7 @@ const AdminDashboard: React.FC = () => {
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">₹{transaction.amount.toLocaleString()}</td>
                               <td className="px-4 py-4 whitespace-nowrap">{getStatusBadge(transaction.status)}</td>
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 font-mono text-xs">{transaction.razorpay_payment_id || '-'}</td>
-                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(transaction.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</td>
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">{formatISTDateTime(transaction.created_at)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -584,7 +595,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'clubs' && (
+            {!isViewer && activeTab === 'clubs' && (
               <div>
                 <div className="mb-6 space-y-4">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -919,7 +930,7 @@ const AdminDashboard: React.FC = () => {
                         <div className="text-right">
                           {getStatusBadge(registration.payment_status)}
                           <p className="text-sm text-gray-500 mt-2">
-                            {new Date(registration.created_at).toLocaleDateString()}
+                            {formatISTDateTime(registration.created_at)}
                           </p>
                         </div>
                       </div>
