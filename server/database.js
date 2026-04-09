@@ -1,12 +1,15 @@
 const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 // Use absolute path for better reliability
 const dbPath = path.resolve(__dirname, '..', 'registrations.db');
 let db;
 let SQL;
 let initPromise;
+
+const hashPassword = (password) => crypto.createHash('sha256').update(String(password)).digest('hex');
 
 console.log('Database path:', dbPath);
 
@@ -100,6 +103,15 @@ async function initDatabase() {
         sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'viewer',
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_registration_id ON transactions(registration_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(razorpay_order_id);
     `;
@@ -118,6 +130,22 @@ async function initDatabase() {
     try { db.run("ALTER TABLE clubs ADD COLUMN ag_phone TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT NULL"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
+
+    const adminUsers = [
+      [process.env.ADMIN_USERNAME || 'vivek', process.env.ADMIN_PASSWORD || 'vivek', 'admin'],
+      [process.env.VIEWER_USERNAME || 'rid3206', process.env.VIEWER_PASSWORD || 'rid3206', 'viewer'],
+    ];
+    for (const [username, password, role] of adminUsers) {
+      const passwordHash = hashPassword(password);
+      db.run(
+        `INSERT INTO admin_users (username, password_hash, role, active)
+         VALUES (?, ?, ?, 1)
+         ON CONFLICT(username)
+         DO UPDATE SET password_hash = excluded.password_hash, role = excluded.role, active = 1`,
+        [username, passwordHash, role]
+      );
+    }
+    console.log('✅ Admin users seeded/updated');
 
     // Seed AG phone numbers (always update so new entries get phones)
     const agPhones = [

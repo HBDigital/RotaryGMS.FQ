@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+
 const AdminLogin: React.FC = () => {
   const navigate = useNavigate();
   const [credentials, setCredentials] = useState({ username: '', password: '' });
@@ -12,18 +14,27 @@ const AdminLogin: React.FC = () => {
     setLoading(true);
     setError('');
 
-    if (credentials.username === 'vivek' && credentials.password === 'vivek') {
+    try {
+      const resp = await fetch(`${API_URL}/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      if (!resp.ok) {
+        setError('Invalid credentials');
+        return;
+      }
+
+      const data = await resp.json();
       sessionStorage.setItem('adminLoggedIn', 'true');
-      sessionStorage.setItem('adminRole', 'admin');
+      sessionStorage.setItem('adminRole', data.role || 'viewer');
       navigate('/admin');
-    } else if (credentials.username === 'rid3206' && credentials.password === 'rid3206') {
-      sessionStorage.setItem('adminLoggedIn', 'true');
-      sessionStorage.setItem('adminRole', 'viewer');
-      navigate('/admin');
-    } else {
-      setError('Invalid credentials');
+    } catch {
+      setError('Login failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

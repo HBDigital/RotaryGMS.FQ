@@ -1,10 +1,40 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const db = require('../database');
 const XLSX = require('xlsx');
 const { sendWhatsAppAGReminder, sendWhatsAppReceipt } = require('../utils/whatsapp');
 const { sendReceiptEmail } = require('../utils/email');
 const { razorpay } = require('../utils/razorpay');
+
+const hashPassword = (password) => crypto.createHash('sha256').update(String(password)).digest('hex');
+
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
+    const user = await db.prepare(
+      `SELECT username, password_hash, role, active FROM admin_users WHERE username = ? LIMIT 1`
+    ).get(username);
+
+    if (!user || user.active !== 1) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const incomingHash = hashPassword(password);
+    if (incomingHash !== user.password_hash) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    return res.status(200).json({ success: true, role: user.role });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    return res.status(500).json({ error: 'Failed to login' });
+  }
+});
 
 router.post('/admin/reconcile-payments', async (req, res) => {
   try {
