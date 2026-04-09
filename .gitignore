@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Runtime data and logs
+*.log
+server.log
+registrations.db
+
+# Build artifacts
+client/build/
+
+# OS/editor files
+.DS_Store
