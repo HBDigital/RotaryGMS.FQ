@@ -998,7 +998,7 @@ const AdminDashboard: React.FC = () => {
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900">Mark Club Designation as Paid</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Mark Member as Paid</h3>
                 <button
                   onClick={() => setManualEntryModalOpen(false)}
                   className="text-gray-400 hover:text-gray-600 text-2xl"
@@ -1022,9 +1022,17 @@ const AdminDashboard: React.FC = () => {
                   onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_designation: e.target.value }))}
                   className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 >
-                  {Object.keys(DESIGNATION_SHORT).map(designation => (
-                    <option key={designation} value={designation}>{designation}</option>
-                  ))}
+                  <option value="President 2025-26">President 2025-26</option>
+                  <option value="President Elect(2026-27)">President Elect(2026-27)</option>
+                  <option value="Treasurer 2026-27">Treasurer 2026-27</option>
+                  <option value="Secretary elect 2026-27">Secretary elect 2026-27</option>
+                  <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
+                  <option value="Member">Member</option>
+                  <option value="Rotaract">Rotaract</option>
+                  <option value="Assistant Governor">Assistant Governor</option>
+                  <option value="Governor Group Representative">Governor Group Representative</option>
+                  <option value="District Director">District Director</option>
+                  <option value="District official">District official</option>
                 </select>
                 <select
                   value={manualPayForm.payment_mode}
