@@ -74,7 +74,7 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'clubs' | 'district'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'clubs' | 'district'>('overview');
 
   interface ClubStatus {
     unregistered: { id: number; name: string }[];
@@ -523,6 +523,16 @@ const AdminDashboard: React.FC = () => {
                 }`}
               >
                 All Registrations
+              </button>
+              <button
+                onClick={() => setActiveTab('designation')}
+                className={`px-6 py-4 text-sm font-medium ${
+                  activeTab === 'designation'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Designation Report
               </button>
               {!isViewer && (
                 <button
@@ -1055,6 +1065,48 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
+            {activeTab === 'designation' && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Designation Report</h2>
+                </div>
+                {designationReport.length === 0 ? (
+                  <p className="text-sm text-gray-500">No successful registrations found.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {designationReport.map((item) => (
+                      <div key={item.designation} className="border border-gray-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="font-semibold text-gray-900">{item.designation}</p>
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                            Total: {item.total_registered}
+                          </span>
+                        </div>
+                        <div className="max-h-72 overflow-y-auto">
+                          <table className="min-w-full text-sm">
+                            <thead>
+                              <tr className="text-left text-gray-500 border-b">
+                                <th className="py-1 pr-3">Person Name</th>
+                                <th className="py-1">Club Name</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {item.registrations.map((reg, idx) => (
+                                <tr key={`${item.designation}-${idx}`} className="border-b last:border-0">
+                                  <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
+                                  <td className="py-1 text-gray-700">{reg.club_name}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {activeTab === 'registrations' && (
               <div>
                 <div className="flex items-center justify-between mb-4">
@@ -1068,44 +1120,6 @@ const AdminDashboard: React.FC = () => {
                     </svg>
                     <span>Export Excel</span>
                   </button>
-                </div>
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Designation Report</h3>
-                  {designationReport.length === 0 ? (
-                    <p className="text-sm text-gray-500">No successful registrations found.</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {designationReport.map((item) => (
-                        <div key={item.designation} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <p className="font-semibold text-gray-900">{item.designation}</p>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                              Total: {item.total_registered}
-                            </span>
-                          </div>
-                          <div className="max-h-40 overflow-y-auto">
-                            <table className="min-w-full text-sm">
-                              <thead>
-                                <tr className="text-left text-gray-500 border-b">
-                                  <th className="py-1 pr-3">Person Name</th>
-                                  <th className="py-1">Club Name</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {item.registrations.map((reg, idx) => (
-                                  <tr key={`${item.designation}-${idx}`} className="border-b last:border-0">
-                                    <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
-                                    <td className="py-1 text-gray-700">{reg.club_name}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-4">
