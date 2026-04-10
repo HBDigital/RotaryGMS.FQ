@@ -159,7 +159,13 @@ const AdminDashboard: React.FC = () => {
   const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[]; total_checked: number } | null>(null);
 
   const isViewer = sessionStorage.getItem('adminRole') === 'viewer';
-  const formatISTDateTime = (value: string) => new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const formatISTDateTime = (value: string) => {
+    const normalized = String(value || '').trim().replace(' ', 'T');
+    const utcValue = normalized.endsWith('Z') ? normalized : `${normalized}Z`;
+    const date = new Date(utcValue);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  };
   const designationReport: DesignationReportItem[] = Object.values(
     registrations.reduce((acc, registration) => {
       registration.delegates.forEach((delegate) => {
@@ -1082,7 +1088,7 @@ const AdminDashboard: React.FC = () => {
                             Total: {item.total_registered}
                           </span>
                         </div>
-                        <div className="max-h-72 overflow-y-auto">
+                        <div className="overflow-x-auto">
                           <table className="min-w-full text-sm">
                             <thead>
                               <tr className="text-left text-gray-500 border-b">
