@@ -111,37 +111,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleManualDesignationPayment = async () => {
-    if (!manualPayForm.club_name || !manualPayForm.delegate_name || !manualPayForm.email || !manualPayForm.phone || !manualPayForm.payment_reference) {
-      alert('Please fill all fields');
-      return;
-    }
-
-    try {
-      setMarkingPaid(true);
-      const res = await fetch(`${API_URL}/admin/manual-designation-payment`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(manualPayForm),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Failed to mark as paid');
-        return;
-      }
-
-      alert(`Marked paid. Receipt: ${data.receipt_no} | Email: ${data.email_status} | WhatsApp: ${data.whatsapp_status}`);
-      setManualPayForm(prev => ({ ...prev, delegate_name: '', email: '', phone: '', payment_reference: '' }));
-      fetchDashboardData();
-      fetchDistrictReport();
-      fetchTransactions(1);
-    } catch (error) {
-      console.error('Manual designation payment failed:', error);
-      alert('Failed to mark as paid');
-    } finally {
-      setMarkingPaid(false);
-    }
-  };
   interface DistrictClub {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
     required_present: string[]; required_missing: string[];
@@ -159,6 +128,7 @@ const AdminDashboard: React.FC = () => {
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
+  const [manualEntryModalOpen, setManualEntryModalOpen] = useState(false);
   const [manualPayForm, setManualPayForm] = useState({
     club_name: '',
     delegate_name: '',
@@ -708,75 +678,13 @@ const AdminDashboard: React.FC = () => {
                 </div>
 
                 {!isViewer && (
-                  <div className="mb-5 border border-indigo-200 bg-indigo-50 rounded-lg p-4">
-                    <h3 className="text-sm font-semibold text-indigo-900 mb-3">Mark Club Designation as Paid</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                      <select
-                        value={manualPayForm.club_name}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, club_name: e.target.value }))}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        <option value="">Select Club</option>
-                        {districtClubNames.map(club => (
-                          <option key={club} value={club}>{club}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={manualPayForm.delegate_designation}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_designation: e.target.value }))}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        {Object.keys(DESIGNATION_SHORT).map(designation => (
-                          <option key={designation} value={designation}>{designation}</option>
-                        ))}
-                      </select>
-                      <select
-                        value={manualPayForm.payment_mode}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_mode: e.target.value }))}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        <option value="NEFT">NEFT</option>
-                        <option value="CASH">CASH</option>
-                        <option value="QR">QR</option>
-                      </select>
-                      <input
-                        type="text"
-                        value={manualPayForm.delegate_name}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_name: e.target.value }))}
-                        placeholder="Person Name"
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="email"
-                        value={manualPayForm.email}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="Email"
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="text"
-                        value={manualPayForm.payment_reference}
-                        onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_reference: e.target.value }))}
-                        placeholder="Payment Reference (mandatory)"
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      />
-                      <div className="flex gap-2">
-                        <input
-                          type="tel"
-                          value={manualPayForm.phone}
-                          onChange={(e) => setManualPayForm(prev => ({ ...prev, phone: e.target.value }))}
-                          placeholder="Phone"
-                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                        />
-                        <button
-                          onClick={handleManualDesignationPayment}
-                          disabled={markingPaid}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
-                        >
-                          {markingPaid ? 'Saving…' : 'Mark Paid'}
-                        </button>
-                      </div>
-                    </div>
+                  <div className="mb-4">
+                    <button
+                      onClick={() => setManualEntryModalOpen(true)}
+                      className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700"
+                    >
+                      + Manual Entry
+                    </button>
                   </div>
                 )}
 
@@ -1083,6 +991,127 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Manual Entry Modal */}
+      {manualEntryModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900">Mark Club Designation as Paid</h3>
+                <button
+                  onClick={() => setManualEntryModalOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 text-2xl"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <select
+                  value={manualPayForm.club_name}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, club_name: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="">Select Club</option>
+                  {districtClubNames.map(club => (
+                    <option key={club} value={club}>{club}</option>
+                  ))}
+                </select>
+                <select
+                  value={manualPayForm.delegate_designation}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_designation: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  {Object.keys(DESIGNATION_SHORT).map(designation => (
+                    <option key={designation} value={designation}>{designation}</option>
+                  ))}
+                </select>
+                <select
+                  value={manualPayForm.payment_mode}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_mode: e.target.value }))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                >
+                  <option value="NEFT">NEFT</option>
+                  <option value="CASH">CASH</option>
+                  <option value="QR">QR</option>
+                </select>
+                <input
+                  type="text"
+                  value={manualPayForm.delegate_name}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_name: e.target.value }))}
+                  placeholder="Person Name"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <input
+                  type="email"
+                  value={manualPayForm.email}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder="Email"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  value={manualPayForm.payment_reference}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_reference: e.target.value }))}
+                  placeholder="Payment Reference (mandatory)"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                <input
+                  type="tel"
+                  value={manualPayForm.phone}
+                  onChange={(e) => setManualPayForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="Phone"
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setManualEntryModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!manualPayForm.club_name || !manualPayForm.delegate_name || !manualPayForm.email || !manualPayForm.phone || !manualPayForm.payment_reference) {
+                      alert('Please fill all fields');
+                      return;
+                    }
+                    try {
+                      setMarkingPaid(true);
+                      const res = await fetch(`${API_URL}/admin/manual-designation-payment`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(manualPayForm),
+                      });
+                      const data = await res.json();
+                      if (!res.ok) {
+                        alert(data.error || 'Failed to mark as paid');
+                        return;
+                      }
+                      alert(`Marked paid. Receipt: ${data.receipt_no} | Email: ${data.email_status} | WhatsApp: ${data.whatsapp_status}`);
+                      setManualPayForm(prev => ({ ...prev, delegate_name: '', email: '', phone: '', payment_reference: '' }));
+                      setManualEntryModalOpen(false);
+                      fetchDashboardData();
+                      fetchDistrictReport();
+                      fetchTransactions(1);
+                    } catch (error) {
+                      console.error('Manual designation payment failed:', error);
+                      alert('Failed to mark as paid');
+                    } finally {
+                      setMarkingPaid(false);
+                    }
+                  }}
+                  disabled={markingPaid}
+                  className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  {markingPaid ? 'Saving…' : 'Mark Paid'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
