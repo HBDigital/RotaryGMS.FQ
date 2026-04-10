@@ -64,6 +64,17 @@ interface DesignationReportItem {
   registrations: DesignationRegistration[];
 }
 
+interface ClubDesignationRegistration {
+  person_name: string;
+  designation: string;
+}
+
+interface ClubDesignationReportItem {
+  club_name: string;
+  total_registered: number;
+  registrations: ClubDesignationRegistration[];
+}
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const AdminDashboard: React.FC = () => {
@@ -93,6 +104,22 @@ const AdminDashboard: React.FC = () => {
     'Treasurer 2026-27': 'Treas',
     'Secretary elect 2026-27': 'Secy',
     'TRF Chair 2026-27': 'TRF',
+  };
+
+  const handleExportDesignationExcel = async (view: 'designation' | 'club') => {
+    try {
+      const blob = await fetch(`${API_URL}/admin/export-designation-excel?view=${view}`).then(r => r.blob());
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `GMS2026_${view}_report_${Date.now()}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error exporting designation Excel:', error);
+      alert('Failed to export designation report');
+    }
   };
 
   const handleManualDesignationPayment = async () => {
@@ -140,6 +167,7 @@ const AdminDashboard: React.FC = () => {
   const [agList, setAgList] = useState<AgListItem[]>([]);
   const [districtLoading, setDistrictLoading] = useState(false);
   const [districtFilter, setDistrictFilter] = useState('');
+  const [designationView, setDesignationView] = useState<'designation' | 'club'>('designation');
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
@@ -186,6 +214,26 @@ const AdminDashboard: React.FC = () => {
       return acc;
     }, {} as Record<string, DesignationReportItem>)
   ).sort((a, b) => a.designation.localeCompare(b.designation));
+  const clubDesignationReport: ClubDesignationReportItem[] = Object.values(
+    registrations.reduce((acc, registration) => {
+      const clubName = registration.club_name || 'Unknown';
+      if (!acc[clubName]) {
+        acc[clubName] = {
+          club_name: clubName,
+          total_registered: 0,
+          registrations: [],
+        };
+      }
+      registration.delegates.forEach((delegate) => {
+        acc[clubName].total_registered += 1;
+        acc[clubName].registrations.push({
+          person_name: delegate.delegate_name,
+          designation: delegate.delegate_designation,
+        });
+      });
+      return acc;
+    }, {} as Record<string, ClubDesignationReportItem>)
+  ).sort((a, b) => a.club_name.localeCompare(b.club_name));
   const districtClubNames = Array.from(new Set(
     districtReport.flatMap(zone =>
       zone.district_directors.flatMap(dd =>
@@ -1075,15 +1123,76 @@ const AdminDashboard: React.FC = () => {
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Designation Report</h2>
+                  <button
+                    onClick={() => handleExportDesignationExcel(designationView)}
+                    className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-700 transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    <span>Export Excel</span>
+                  </button>
                 </div>
-                {designationReport.length === 0 ? (
+                <div className="mb-4 border-b border-gray-200">
+                  <nav className="flex -mb-px">
+                    <button
+                      onClick={() => setDesignationView('designation')}
+                      className={`px-4 py-2 text-sm font-medium ${designationView === 'designation' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      By Designation
+                    </button>
+                    <button
+                      onClick={() => setDesignationView('club')}
+                      className={`px-4 py-2 text-sm font-medium ${designationView === 'club' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      By Club
+                    </button>
+                  </nav>
+                </div>
+
+                {designationView === 'designation' ? (
+                  designationReport.length === 0 ? (
+                    <p className="text-sm text-gray-500">No successful registrations found.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {designationReport.map((item) => (
+                        <div key={item.designation} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-semibold text-gray-900">{item.designation}</p>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                              Total: {item.total_registered}
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-gray-500 border-b">
+                                  <th className="py-1 pr-3">Person Name</th>
+                                  <th className="py-1">Club Name</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.registrations.map((reg, idx) => (
+                                  <tr key={`${item.designation}-${idx}`} className="border-b last:border-0">
+                                    <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
+                                    <td className="py-1 text-gray-700">{reg.club_name}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : clubDesignationReport.length === 0 ? (
                   <p className="text-sm text-gray-500">No successful registrations found.</p>
                 ) : (
                   <div className="space-y-3">
-                    {designationReport.map((item) => (
-                      <div key={item.designation} className="border border-gray-200 rounded-lg p-4">
+                    {clubDesignationReport.map((item) => (
+                      <div key={item.club_name} className="border border-gray-200 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-gray-900">{item.designation}</p>
+                          <p className="font-semibold text-gray-900">{item.club_name}</p>
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
                             Total: {item.total_registered}
                           </span>
@@ -1093,14 +1202,14 @@ const AdminDashboard: React.FC = () => {
                             <thead>
                               <tr className="text-left text-gray-500 border-b">
                                 <th className="py-1 pr-3">Person Name</th>
-                                <th className="py-1">Club Name</th>
+                                <th className="py-1">Designation</th>
                               </tr>
                             </thead>
                             <tbody>
                               {item.registrations.map((reg, idx) => (
-                                <tr key={`${item.designation}-${idx}`} className="border-b last:border-0">
+                                <tr key={`${item.club_name}-${idx}`} className="border-b last:border-0">
                                   <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
-                                  <td className="py-1 text-gray-700">{reg.club_name}</td>
+                                  <td className="py-1 text-gray-700">{reg.designation}</td>
                                 </tr>
                               ))}
                             </tbody>

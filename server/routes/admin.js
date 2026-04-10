@@ -401,6 +401,90 @@ router.get('/admin/export-excel', async (req, res) => {
   }
 });
 
+router.get('/admin/export-designation-excel', async (req, res) => {
+  try {
+    const view = String(req.query.view || 'designation').toLowerCase() === 'club' ? 'club' : 'designation';
+    const rows = await db.prepare(`
+      SELECT r.club_name, d.delegate_name, d.delegate_designation
+      FROM registrations r
+      JOIN delegates d ON d.registration_id = r.id
+      WHERE r.payment_status = 'success'
+      ORDER BY r.club_name ASC, d.delegate_designation ASC, d.delegate_name ASC
+    `).all();
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet(view === 'club' ? 'By Club' : 'By Designation');
+
+    if (view === 'designation') {
+      const grouped = rows.reduce((acc, row) => {
+        const key = row.delegate_designation || 'Unknown';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push({ person_name: row.delegate_name, club_name: row.club_name });
+        return acc;
+      }, {});
+
+      const exportRows = [];
+      Object.keys(grouped).sort((a, b) => a.localeCompare(b)).forEach((designation) => {
+        const entries = grouped[designation];
+        entries.forEach((entry) => {
+          exportRows.push({
+            Designation: designation,
+            'Total Registered': entries.length,
+            'Person Name': entry.person_name,
+            'Club Name': entry.club_name,
+          });
+        });
+      });
+
+      const headers = ['Designation', 'Total Registered', 'Person Name', 'Club Name'];
+      sheet.addRow(headers);
+      exportRows.forEach((r) => sheet.addRow(headers.map((h) => r[h] ?? '')));
+      headers.forEach((header, index) => {
+        const col = sheet.getColumn(index + 1);
+        const maxLen = Math.max(String(header).length, ...exportRows.map((r) => String(r[header] ?? '').length));
+        col.width = Math.min(maxLen + 2, 60);
+      });
+    } else {
+      const grouped = rows.reduce((acc, row) => {
+        const key = row.club_name || 'Unknown';
+        if (!acc[key]) acc[key] = [];
+        acc[key].push({ person_name: row.delegate_name, designation: row.delegate_designation });
+        return acc;
+      }, {});
+
+      const exportRows = [];
+      Object.keys(grouped).sort((a, b) => a.localeCompare(b)).forEach((club) => {
+        const entries = grouped[club];
+        entries.forEach((entry) => {
+          exportRows.push({
+            'Club Name': club,
+            'Total Registered': entries.length,
+            'Person Name': entry.person_name,
+            Designation: entry.designation,
+          });
+        });
+      });
+
+      const headers = ['Club Name', 'Total Registered', 'Person Name', 'Designation'];
+      sheet.addRow(headers);
+      exportRows.forEach((r) => sheet.addRow(headers.map((h) => r[h] ?? '')));
+      headers.forEach((header, index) => {
+        const col = sheet.getColumn(index + 1);
+        const maxLen = Math.max(String(header).length, ...exportRows.map((r) => String(r[header] ?? '').length));
+        col.width = Math.min(maxLen + 2, 60);
+      });
+    }
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_${view}_report_${Date.now()}.xlsx`);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Error exporting designation Excel:', error);
+    res.status(500).json({ error: 'Failed to export designation report' });
+  }
+});
+
 // Get all active clubs (public - used by registration form)
 router.get('/clubs', async (req, res) => {
   try {
