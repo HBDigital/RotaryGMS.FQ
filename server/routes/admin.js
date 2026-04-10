@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const db = require('../database');
-const XLSX = require('xlsx');
+const ExcelJS = require('exceljs');
 const { sendWhatsAppAGReminder, sendWhatsAppReceipt } = require('../utils/whatsapp');
 const { sendReceiptEmail } = require('../utils/email');
 const { razorpay } = require('../utils/razorpay');
@@ -354,22 +354,47 @@ router.get('/admin/export-excel', async (req, res) => {
       });
     }
 
-    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Registrations');
+    const headers = Object.keys(rows[0] || {
+      'Receipt No': '',
+      'Reg ID': '',
+      'Name': '',
+      'Email': '',
+      'Phone': '',
+      'Club Name': '',
+      'Total Delegates': '',
+      'Amount (₹)': '',
+      'Payment Status': '',
+      'Email Status': '',
+      'WhatsApp Status': '',
+      'Razorpay Order ID': '',
+      'Razorpay Payment ID': '',
+      'Registration Date': '',
+      'Delegate #': '',
+      'Delegate Name': '',
+      'Delegate Designation': '',
+    });
 
-    // Auto-width columns
-    const colWidths = Object.keys(rows[0] || {}).map(key => ({
-      wch: Math.max(key.length, ...rows.map(r => String(r[key] || '').length)) + 2,
-    }));
-    worksheet['!cols'] = colWidths;
+    sheet.addRow(headers);
+    rows.forEach((row) => {
+      sheet.addRow(headers.map((h) => row[h] ?? ''));
+    });
 
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
+    headers.forEach((header, index) => {
+      const col = sheet.getColumn(index + 1);
+      const maxLen = Math.max(
+        String(header).length,
+        ...rows.map((r) => String(r[header] ?? '').length)
+      );
+      col.width = Math.min(maxLen + 2, 60);
+    });
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', `attachment; filename=GMS2026_Registrations_${Date.now()}.xlsx`);
-    res.send(buffer);
+    res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('Error exporting Excel:', error);
     res.status(500).json({ error: 'Failed to export Excel' });
