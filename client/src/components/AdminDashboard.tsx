@@ -53,6 +53,17 @@ interface Registration {
   whatsapp_status: string;
 }
 
+interface DesignationRegistration {
+  person_name: string;
+  club_name: string;
+}
+
+interface DesignationReportItem {
+  designation: string;
+  total_registered: number;
+  registrations: DesignationRegistration[];
+}
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const AdminDashboard: React.FC = () => {
@@ -83,6 +94,39 @@ const AdminDashboard: React.FC = () => {
     'Secretary elect 2026-27': 'Secy',
     'TRF Chair 2026-27': 'TRF',
   };
+
+  const handleManualDesignationPayment = async () => {
+    if (!manualPayForm.club_name || !manualPayForm.delegate_name || !manualPayForm.email || !manualPayForm.phone || !manualPayForm.payment_reference) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    try {
+      setMarkingPaid(true);
+      const res = await fetch(`${API_URL}/admin/manual-designation-payment`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(manualPayForm),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to mark as paid');
+        return;
+      }
+
+      alert(`Marked paid. Receipt: ${data.receipt_no} | Email: ${data.email_status} | WhatsApp: ${data.whatsapp_status}`);
+      setManualPayForm(prev => ({ ...prev, delegate_name: '', email: '', phone: '', payment_reference: '' }));
+      fetchDashboardData();
+      fetchClubStatus();
+      fetchDistrictReport();
+      fetchTransactions(1);
+    } catch (error) {
+      console.error('Manual designation payment failed:', error);
+      alert('Failed to mark as paid');
+    } finally {
+      setMarkingPaid(false);
+    }
+  };
   interface DistrictClub {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
     required_present: string[]; required_missing: string[];
@@ -99,6 +143,16 @@ const AdminDashboard: React.FC = () => {
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
+  const [manualPayForm, setManualPayForm] = useState({
+    club_name: '',
+    delegate_name: '',
+    delegate_designation: 'President 2025-26',
+    email: '',
+    phone: '',
+    payment_mode: 'CASH',
+    payment_reference: '',
+  });
+  const [markingPaid, setMarkingPaid] = useState(false);
   const REFRESH_INTERVAL = 300;
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
   const [reconciling, setReconciling] = useState(false);
@@ -106,6 +160,33 @@ const AdminDashboard: React.FC = () => {
 
   const isViewer = sessionStorage.getItem('adminRole') === 'viewer';
   const formatISTDateTime = (value: string) => new Date(value).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const designationReport: DesignationReportItem[] = Object.values(
+    registrations.reduce((acc, registration) => {
+      registration.delegates.forEach((delegate) => {
+        const designation = delegate.delegate_designation || 'Unknown';
+        if (!acc[designation]) {
+          acc[designation] = {
+            designation,
+            total_registered: 0,
+            registrations: [],
+          };
+        }
+        acc[designation].total_registered += 1;
+        acc[designation].registrations.push({
+          person_name: delegate.delegate_name,
+          club_name: registration.club_name,
+        });
+      });
+      return acc;
+    }, {} as Record<string, DesignationReportItem>)
+  ).sort((a, b) => a.designation.localeCompare(b.designation));
+  const districtClubNames = Array.from(new Set(
+    districtReport.flatMap(zone =>
+      zone.district_directors.flatMap(dd =>
+        dd.assistant_governors.flatMap(ag => ag.clubs.map(club => club.name))
+      )
+    )
+  )).sort((a, b) => a.localeCompare(b));
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -774,6 +855,79 @@ const AdminDashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {!isViewer && (
+                  <div className="mb-5 border border-indigo-200 bg-indigo-50 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-indigo-900 mb-3">Mark Club Designation as Paid</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <select
+                        value={manualPayForm.club_name}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, club_name: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">Select Club</option>
+                        {districtClubNames.map(club => (
+                          <option key={club} value={club}>{club}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={manualPayForm.delegate_designation}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_designation: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        {Object.keys(DESIGNATION_SHORT).map(designation => (
+                          <option key={designation} value={designation}>{designation}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={manualPayForm.payment_mode}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_mode: e.target.value }))}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="NEFT">NEFT</option>
+                        <option value="CASH">CASH</option>
+                        <option value="QR">QR</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={manualPayForm.delegate_name}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, delegate_name: e.target.value }))}
+                        placeholder="Person Name"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="email"
+                        value={manualPayForm.email}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="Email"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <input
+                        type="text"
+                        value={manualPayForm.payment_reference}
+                        onChange={(e) => setManualPayForm(prev => ({ ...prev, payment_reference: e.target.value }))}
+                        placeholder="Payment Reference (mandatory)"
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      />
+                      <div className="flex gap-2">
+                        <input
+                          type="tel"
+                          value={manualPayForm.phone}
+                          onChange={(e) => setManualPayForm(prev => ({ ...prev, phone: e.target.value }))}
+                          placeholder="Phone"
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        />
+                        <button
+                          onClick={handleManualDesignationPayment}
+                          disabled={markingPaid}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {markingPaid ? 'Saving…' : 'Mark Paid'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {districtLoading ? (
                   <div className="text-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div></div>
                 ) : districtReport.length === 0 ? (
@@ -915,6 +1069,45 @@ const AdminDashboard: React.FC = () => {
                     <span>Export Excel</span>
                   </button>
                 </div>
+
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Designation Report</h3>
+                  {designationReport.length === 0 ? (
+                    <p className="text-sm text-gray-500">No successful registrations found.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {designationReport.map((item) => (
+                        <div key={item.designation} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-semibold text-gray-900">{item.designation}</p>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                              Total: {item.total_registered}
+                            </span>
+                          </div>
+                          <div className="max-h-40 overflow-y-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-gray-500 border-b">
+                                  <th className="py-1 pr-3">Person Name</th>
+                                  <th className="py-1">Club Name</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {item.registrations.map((reg, idx) => (
+                                  <tr key={`${item.designation}-${idx}`} className="border-b last:border-0">
+                                    <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
+                                    <td className="py-1 text-gray-700">{reg.club_name}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 <div className="space-y-4">
                   {registrations.map((registration) => (
                     <div key={registration.id} className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow">

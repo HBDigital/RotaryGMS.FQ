@@ -8,6 +8,13 @@ const { sendReceiptEmail } = require('../utils/email');
 const { razorpay } = require('../utils/razorpay');
 
 const hashPassword = (password) => crypto.createHash('sha256').update(String(password)).digest('hex');
+const REQUIRED_DESIGNATIONS = [
+  'President 2025-26',
+  'President Elect(2026-27)',
+  'Treasurer 2026-27',
+  'Secretary elect 2026-27',
+  'TRF Chair 2026-27',
+];
 
 router.post('/admin/login', async (req, res) => {
   try {
@@ -98,6 +105,106 @@ router.post('/admin/reconcile-payments', async (req, res) => {
   } catch (error) {
     console.error('Reconcile error:', error);
     res.status(500).json({ error: 'Failed to reconcile payments' });
+  }
+});
+
+router.post('/admin/manual-designation-payment', async (req, res) => {
+  try {
+    const {
+      delegate_name,
+      delegate_designation,
+      club_name,
+      email,
+      phone,
+      payment_mode,
+      payment_reference,
+    } = req.body || {};
+
+    if (!delegate_name || !delegate_designation || !club_name || !email || !phone || !payment_mode || !payment_reference) {
+      return res.status(400).json({ error: 'delegate_name, delegate_designation, club_name, email, phone, payment_mode and payment_reference are required' });
+    }
+
+    const allowedModes = ['NEFT', 'CASH', 'QR'];
+    if (!allowedModes.includes(String(payment_mode).toUpperCase())) {
+      return res.status(400).json({ error: 'Invalid payment mode. Allowed: NEFT, CASH, QR' });
+    }
+
+    if (!REQUIRED_DESIGNATIONS.includes(delegate_designation)) {
+      return res.status(400).json({ error: 'Invalid designation' });
+    }
+
+    const normalizedPhone = String(phone).replace(/\D/g, '');
+    if (normalizedPhone.length < 10) {
+      return res.status(400).json({ error: 'Invalid phone number' });
+    }
+
+    const amount = 1050;
+    const manualPaymentId = `manual_${Date.now()}`;
+
+    const lastReceipt = await db.prepare(
+      `SELECT receipt_no FROM registrations WHERE receipt_no IS NOT NULL ORDER BY id DESC LIMIT 1`
+    ).get();
+    let nextNum = 1;
+    if (lastReceipt?.receipt_no) {
+      const m = lastReceipt.receipt_no.match(/(\d+)$/);
+      if (m) nextNum = parseInt(m[1], 10) + 1;
+    }
+    const receipt_no = `GMS2026-${String(nextNum).padStart(3, '0')}`;
+
+    const insertReg = await db.prepare(
+      `INSERT INTO registrations
+      (name, email, phone, club_name, delegate_count, total_amount, payment_mode, payment_reference, payment_status, razorpay_payment_id, receipt_no)
+      VALUES (?, ?, ?, ?, 1, ?, ?, ?, 'success', ?, ?)`
+    ).run(delegate_name, email, normalizedPhone.slice(-10), club_name, amount, String(payment_mode).toUpperCase(), payment_reference, manualPaymentId, receipt_no);
+
+    const registrationId = insertReg.lastInsertRowid;
+
+    await db.prepare(
+      `INSERT INTO delegates (registration_id, delegate_name, delegate_designation)
+       VALUES (?, ?, ?)`
+    ).run(registrationId, delegate_name, delegate_designation);
+
+    await db.prepare(
+      `INSERT INTO transactions (registration_id, amount, status, razorpay_payment_id, raw_response, updated_at)
+       VALUES (?, ?, 'success', ?, ?, CURRENT_TIMESTAMP)`
+    ).run(
+      registrationId,
+      amount,
+      manualPaymentId,
+      JSON.stringify({ source: 'admin_manual_mark_paid', payment_mode: String(payment_mode).toUpperCase(), payment_reference })
+    );
+
+    const notifData = {
+      name: delegate_name,
+      email,
+      phone: normalizedPhone.slice(-10),
+      club_name,
+      delegate_count: 1,
+      total_amount: amount,
+      receipt_no,
+      payment_id: manualPaymentId,
+      delegates: [{ delegate_name, delegate_designation }],
+    };
+
+    const [emailSent, waSent] = await Promise.all([
+      sendReceiptEmail(notifData).catch(() => false),
+      sendWhatsAppReceipt(notifData).catch(() => false),
+    ]);
+
+    await db.prepare(
+      `UPDATE registrations SET email_status = ?, whatsapp_status = ? WHERE id = ?`
+    ).run(emailSent ? 'sent' : 'failed', waSent ? 'sent' : 'failed', registrationId);
+
+    return res.status(201).json({
+      success: true,
+      registration_id: registrationId,
+      receipt_no,
+      email_status: emailSent ? 'sent' : 'failed',
+      whatsapp_status: waSent ? 'sent' : 'failed',
+    });
+  } catch (error) {
+    console.error('Manual designation payment error:', error);
+    return res.status(500).json({ error: 'Failed to mark designation as paid' });
   }
 });
 

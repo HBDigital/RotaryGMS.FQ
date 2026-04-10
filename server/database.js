@@ -59,6 +59,8 @@ async function initDatabase() {
         club_name TEXT NOT NULL,
         delegate_count INTEGER NOT NULL,
         total_amount INTEGER NOT NULL,
+        payment_mode TEXT DEFAULT 'online',
+        payment_reference TEXT,
         payment_status TEXT DEFAULT 'pending',
         razorpay_order_id TEXT,
         razorpay_payment_id TEXT,
@@ -129,6 +131,8 @@ async function initDatabase() {
     try { db.run("ALTER TABLE clubs ADD COLUMN ggr TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ag_phone TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE registrations ADD COLUMN payment_mode TEXT DEFAULT 'online'"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE registrations ADD COLUMN payment_reference TEXT"); } catch (e) { /* already exists */ }
     console.log('✅ Database migrations applied');
 
     const adminUsers = [
