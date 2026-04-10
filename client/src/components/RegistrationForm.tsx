@@ -22,6 +22,15 @@ declare global {
 }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
+const REGISTRATION_CLOSE_DATE_IST = process.env.REACT_APP_REGISTRATION_CLOSE_DATE_IST || '2026-05-01';
+const isRegistrationClosedIST = () => {
+  const parts = REGISTRATION_CLOSE_DATE_IST.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
+  const [year, month, day] = parts;
+  const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+  const closeAtUtcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - istOffsetMs;
+  return Date.now() >= closeAtUtcMs;
+};
 
 const RegistrationForm: React.FC = () => {
   const navigate = useNavigate();
@@ -37,6 +46,7 @@ const RegistrationForm: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [clubs, setClubs] = useState<string[]>([]);
+  const [registrationClosed] = useState(isRegistrationClosedIST());
 
   useEffect(() => {
     fetch(`${API_URL}/clubs`)
@@ -221,6 +231,11 @@ const RegistrationForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (registrationClosed) {
+      alert(`Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`);
+      return;
+    }
+
     if (!validateForm()) {
       return;
     }
@@ -228,14 +243,21 @@ const RegistrationForm: React.FC = () => {
     setLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/registrations`, {
+      const apiResult = await fetch(`${API_URL}/registrations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
-      }).then(res => res.json());
+      }).then(async (res) => ({ status: res.status, body: await res.json() }));
+      const responseBody = apiResult.body;
+
+      if (responseBody?.closed) {
+        alert(responseBody.error || `Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`);
+        setLoading(false);
+        return;
+      }
       
-      if (response.success) {
-        const { registrationId, total_amount } = response;
+      if (responseBody.success) {
+        const { registrationId, total_amount } = responseBody;
         await handlePayment(registrationId, total_amount);
       }
     } catch (error) {
@@ -256,6 +278,11 @@ const RegistrationForm: React.FC = () => {
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary 3206, GMS 2026</h1>
             <p className="text-sm sm:text-base text-gray-600">Register your delegates for the event</p>
             <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 03 May 2026 | <b>Venue:</b> Grant Regent Hotel, Coimbatore</p>
+            {registrationClosed && (
+              <div className="mt-4 inline-block bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium">
+                Registrations are closed from {REGISTRATION_CLOSE_DATE_IST} (IST)
+              </div>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -442,10 +469,10 @@ const RegistrationForm: React.FC = () => {
                 </div>
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || registrationClosed}
                   className="w-full sm:w-auto bg-white text-blue-600 px-6 sm:px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Processing...' : 'Proceed to Payment'}
+                  {registrationClosed ? 'Registrations Closed' : loading ? 'Processing...' : 'Proceed to Payment'}
                 </button>
               </div>
             </div>

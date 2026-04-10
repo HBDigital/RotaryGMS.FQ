@@ -5,8 +5,25 @@ const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razo
 const { sendReceiptEmail } = require('../utils/email');
 const { sendWhatsAppReceipt } = require('../utils/whatsapp');
 
+const REGISTRATION_CLOSE_DATE_IST = process.env.REGISTRATION_CLOSE_DATE_IST || '2026-05-01';
+const isRegistrationClosed = () => {
+  const parts = REGISTRATION_CLOSE_DATE_IST.split('-').map(Number);
+  if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
+  const [year, month, day] = parts;
+  const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+  const closeAtUtcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - istOffsetMs;
+  return Date.now() >= closeAtUtcMs;
+};
+
 router.post('/registrations', async (req, res) => {
   try {
+    if (isRegistrationClosed()) {
+      return res.status(403).json({
+        error: `Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`,
+        closed: true,
+      });
+    }
+
     console.log('Registration request received:', req.body);
     
     const { name, email, phone, club_name, delegate_count, delegates } = req.body;
