@@ -209,9 +209,7 @@ async function initDatabase() {
     }
 
     // Seed district hierarchy (DD/AG/GGR) assignments for clubs
-    const hierarchyResult = db.exec("SELECT COUNT(*) FROM clubs WHERE district_director IS NOT NULL");
-    const assignedCount = hierarchyResult.length > 0 ? hierarchyResult[0].values[0][0] : 0;
-    if (assignedCount === 0) {
+    // Always re-apply this canonical mapping so existing DBs don't retain stale assignments.
       const clubAssignments = [
         // Zone 1 — DD: Rtn. Dr. Vijayakumar N — AG: Rtn. Maruthachalam S
         ['Coimbatore Gaalaxy', 1, 'Rtn. Dr. Vijayakumar N', 'Rtn. Maruthachalam S', 'Rtn. Krishnakumar R'],
@@ -286,7 +284,6 @@ async function initDatabase() {
         );
       }
       console.log(`✅ Seeded district hierarchy for ${clubAssignments.length} clubs`);
-    }
 
     // Always-run: insert missing clubs + assign Zone 3 and any omitted Zone 1/2 clubs
     const extraClubNames = ['Coimbatore Siruvani', 'Coimbatore Sangamam', 'Coimbatore Rise', 'Coimbatore Global'];
