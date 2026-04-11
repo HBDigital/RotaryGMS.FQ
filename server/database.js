@@ -239,7 +239,7 @@ async function initDatabase() {
         ['Metro Dynamix',      1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Raj Siddarth'],
         ['Coimbatore Legend',  1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
         ['Coimbatore Saicity', 1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
-        ['Coimbatore Central', 1, 'Rtn. Manivanan T', 'Rtn. Dr. Deepana S N', 'Rtn. Thulasisethu'],
+        ['Coimbatore Central', 1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Kumarpal K Daga'],
         // Zone 1 — DD: Rtn. Manivanan T — AG: Rtn. Vijay C R
         ['Coimbatore Monarks', 1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Kumarpal K Daga'],
         ['Coimbatore Zenith',  1, 'Rtn. Manivanan T', 'Rtn. Vijay C R', 'Rtn. Manikantan VAJ'],
