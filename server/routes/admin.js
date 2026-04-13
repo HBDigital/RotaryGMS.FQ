@@ -625,14 +625,20 @@ router.post('/admin/send-ag-reminder', async (req, res) => {
     ).get(ag_name);
     if (!agClub || !agClub.ag_phone) return res.status(404).json({ error: 'AG phone not found' });
 
+    const inClause = REQUIRED_DESIGNATIONS.map(() => '?').join(', ');
     const pendingRows = await db.prepare(`
-      SELECT c.name FROM clubs c
-      LEFT JOIN (
-        SELECT club_name FROM registrations WHERE payment_status = 'success' GROUP BY club_name
-      ) r ON r.club_name = c.name
-      WHERE c.assistant_governor = ? AND c.active = 1 AND r.club_name IS NULL
+      SELECT
+        c.name,
+        COUNT(DISTINCT d.delegate_designation) AS required_count
+      FROM clubs c
+      LEFT JOIN registrations r ON r.club_name = c.name AND r.payment_status = 'success'
+      LEFT JOIN delegates d ON d.registration_id = r.id
+        AND d.delegate_designation IN (${inClause})
+      WHERE c.assistant_governor = ? AND c.active = 1
+      GROUP BY c.name
+      HAVING required_count < 2
       ORDER BY c.name ASC
-    `).all(ag_name);
+    `).all(...REQUIRED_DESIGNATIONS, ag_name);
     const pendingClubs = pendingRows.map(r => r.name).join(', ');
     if (!pendingClubs) return res.status(400).json({ error: 'No pending clubs for this AG' });
 
