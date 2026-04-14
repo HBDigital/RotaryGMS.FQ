@@ -499,7 +499,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => setClubListModalType('pending')}
                     className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 hover:underline"
                   >
-                    {pendingClubCount}
+                    {pendingClubCount}/{districtClubs.length}
                   </button>
                 </div>
                 <div className="bg-yellow-100 p-2 sm:p-3 rounded-full">
