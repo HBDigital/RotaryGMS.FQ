@@ -621,9 +621,10 @@ router.get('/admin/district-report', async (req, res) => {
         name: dd.name,
         assistant_governors: Object.values(dd.assistant_governors).map(ag => {
           const agClubs = ag.clubs;
-          const completed = agClubs.filter(c => c.status === 'completed').length;
-          const partial   = agClubs.filter(c => c.status === 'partial').length;
-          const not_reg   = agClubs.filter(c => c.status === 'not_registered').length;
+          const activeClubs = agClubs.filter(c => !c.participation_closed);
+          const completed = activeClubs.filter(c => c.status === 'completed').length;
+          const partial   = activeClubs.filter(c => c.status === 'partial').length;
+          const not_reg   = activeClubs.filter(c => c.status === 'not_registered').length;
           return { name: ag.name, phone: ag.phone, reminder_sent_today: ag.reminder_sent_today, total: agClubs.length, completed, partial, not_registered: not_reg, clubs: agClubs };
         }),
       })),

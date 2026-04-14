@@ -810,10 +810,10 @@ const AdminDashboard: React.FC = () => {
                                               {visibleClubs.map(club => (
                                                 <li key={club.name} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                                   <div className="flex items-center gap-2">
-                                                    {club.status === 'completed' && <span className="text-green-500 font-bold">✓</span>}
-                                                    {club.status === 'partial'   && <span className="text-orange-500 font-bold">⚠</span>}
-                                                    {club.status === 'not_registered' && <span className="text-red-500 font-bold">✗</span>}
-                                                    <span className={club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-green-800 font-medium'}>
+                                                    {(club.status === 'completed' || club.participation_closed) && <span className="text-green-500 font-bold">✓</span>}
+                                                    {!club.participation_closed && club.status === 'partial'   && <span className="text-orange-500 font-bold">⚠</span>}
+                                                    {!club.participation_closed && club.status === 'not_registered' && <span className="text-red-500 font-bold">✗</span>}
+                                                    <span className={club.participation_closed ? 'text-green-800 font-medium' : club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-green-800 font-medium'}>
                                                       {club.name}
                                                     </span>
                                                     {club.participation_closed && (
