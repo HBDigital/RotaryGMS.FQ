@@ -155,6 +155,7 @@ const AdminDashboard: React.FC = () => {
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
   const [clubParticipationUpdating, setClubParticipationUpdating] = useState<Record<string, boolean>>({});
+  const [clubListModalType, setClubListModalType] = useState<null | 'pending' | 'closed'>(null);
   const [manualEntryModalOpen, setManualEntryModalOpen] = useState(false);
   const [manualPayForm, setManualPayForm] = useState({
     club_name: '',
@@ -226,6 +227,23 @@ const AdminDashboard: React.FC = () => {
       )
     )
   )).sort((a, b) => a.localeCompare(b));
+  const districtClubs = districtReport.flatMap(zone =>
+    zone.district_directors.flatMap(dd =>
+      dd.assistant_governors.flatMap(ag => ag.clubs)
+    )
+  );
+  const closedClubNames = Array.from(new Set(
+    districtClubs.filter(club => club.participation_closed).map(club => club.name)
+  )).sort((a, b) => a.localeCompare(b));
+  const registeredActiveClubCount = districtClubs.filter(
+    club => !club.participation_closed && club.status !== 'not_registered'
+  ).length;
+  const pendingClubNames = Array.from(new Set(
+    districtClubs
+      .filter(club => !club.participation_closed && club.status === 'not_registered')
+      .map(club => club.name)
+  )).sort((a, b) => a.localeCompare(b));
+  const pendingClubCount = Math.max(0, districtClubs.length - registeredActiveClubCount - closedClubNames.length);
 
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
@@ -475,8 +493,14 @@ const AdminDashboard: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-3 sm:mb-0">
-                  <p className="text-xs sm:text-sm text-gray-600">Pending Payments</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.pendingPayments}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Pending Clubs</p>
+                  <button
+                    type="button"
+                    onClick={() => setClubListModalType('pending')}
+                    className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 hover:underline"
+                  >
+                    {pendingClubCount}
+                  </button>
                 </div>
                 <div className="bg-yellow-100 p-2 sm:p-3 rounded-full">
                   <svg className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,8 +513,14 @@ const AdminDashboard: React.FC = () => {
             <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
                 <div className="mb-3 sm:mb-0">
-                  <p className="text-xs sm:text-sm text-gray-600">Failed Payments</p>
-                  <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">{summary.failedPayments}</p>
+                  <p className="text-xs sm:text-sm text-gray-600">Not Participating</p>
+                  <button
+                    type="button"
+                    onClick={() => setClubListModalType('closed')}
+                    className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 hover:underline"
+                  >
+                    {closedClubNames.length}
+                  </button>
                 </div>
                 <div className="bg-red-100 p-2 sm:p-3 rounded-full">
                   <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1173,6 +1203,36 @@ const AdminDashboard: React.FC = () => {
                   {markingPaid ? 'Saving…' : 'Mark Paid'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {clubListModalType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white w-full max-w-xl rounded-2xl shadow-xl p-6 relative">
+            <button
+              onClick={() => setClubListModalType(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              ✕
+            </button>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 pr-8">
+              {clubListModalType === 'pending' ? 'Pending Clubs' : 'Not Participating Clubs'}
+            </h3>
+            <div className="max-h-[55vh] overflow-y-auto border border-gray-100 rounded-lg">
+              {(clubListModalType === 'pending' ? pendingClubNames : closedClubNames).length === 0 ? (
+                <p className="text-sm text-gray-500 p-4">No clubs found.</p>
+              ) : (
+                <ul className="divide-y divide-gray-100">
+                  {(clubListModalType === 'pending' ? pendingClubNames : closedClubNames).map((clubName, index) => (
+                    <li key={clubName} className="px-4 py-2.5 text-sm text-gray-800 flex items-center gap-3">
+                      <span className="text-xs text-gray-400 w-6">{index + 1}.</span>
+                      <span>{clubName}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
