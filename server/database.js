@@ -286,6 +286,28 @@ async function initDatabase() {
       console.log(`✅ Seeded district hierarchy for ${clubAssignments.length} clubs`);
 
     // Always-run: insert missing clubs + assign Zone 3 and any omitted Zone 1/2 clubs
+    // Normalize legacy short club names to canonical master names.
+    db.run(`
+      DELETE FROM clubs
+      WHERE lower(trim(name)) = 'siruvani'
+        AND EXISTS (
+          SELECT 1 FROM clubs c2 WHERE lower(trim(c2.name)) = 'coimbatore siruvani'
+        )
+    `);
+    db.run(`
+      UPDATE clubs
+      SET name = 'Coimbatore Siruvani'
+      WHERE lower(trim(name)) = 'siruvani'
+        AND NOT EXISTS (
+          SELECT 1 FROM clubs c2 WHERE lower(trim(c2.name)) = 'coimbatore siruvani'
+        )
+    `);
+    db.run(`
+      UPDATE registrations
+      SET club_name = 'Coimbatore Siruvani'
+      WHERE lower(trim(club_name)) = 'siruvani'
+    `);
+
     const extraClubNames = ['Coimbatore Siruvani', 'Coimbatore Sangamam', 'Coimbatore Rise', 'Coimbatore Global'];
     for (const name of extraClubNames) {
       db.run("INSERT OR IGNORE INTO clubs (name) VALUES (?)", [name]);
