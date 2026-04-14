@@ -43,6 +43,24 @@ router.post('/admin/login', async (req, res) => {
   }
 });
 
+router.post('/admin/clubs/participation', async (req, res) => {
+  try {
+    const { club_name, closed } = req.body || {};
+    if (!club_name || !String(club_name).trim()) {
+      return res.status(400).json({ error: 'club_name is required' });
+    }
+
+    await db.prepare(
+      `UPDATE clubs SET participation_closed = ? WHERE name = ?`
+    ).run(closed ? 1 : 0, String(club_name).trim());
+
+    res.status(200).json({ success: true, club_name: String(club_name).trim(), participation_closed: !!closed });
+  } catch (error) {
+    console.error('Error updating club participation:', error);
+    res.status(500).json({ error: 'Failed to update club participation' });
+  }
+});
+
 router.post('/admin/reconcile-payments', async (req, res) => {
   try {
     const pendingRegs = await db.prepare(`
@@ -534,14 +552,20 @@ router.get('/admin/district-report', async (req, res) => {
 
     const clubs = await db.prepare(`
       SELECT
-        c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone,
+        c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone, c.participation_closed,
         GROUP_CONCAT(DISTINCT d.delegate_designation) AS found_designations
       FROM clubs c
-      LEFT JOIN registrations r ON r.club_name = c.name AND r.payment_status = 'success'
+      LEFT JOIN registrations r ON r.payment_status = 'success' AND (
+        r.club_name = c.name
+        OR lower(replace(replace(replace(r.club_name, ' ', ''), '-', ''), '''', ''))
+           = lower(replace(replace(replace(c.name, ' ', ''), '-', ''), '''', ''))
+        OR lower(replace(replace(replace(r.club_name, ' ', ''), '-', ''), '''', ''))
+           = replace(lower(replace(replace(replace(c.name, ' ', ''), '-', ''), '''', '')), 'coimbatore', '')
+      )
       LEFT JOIN delegates d ON d.registration_id = r.id
         AND d.delegate_designation IN (${inClause})
       WHERE c.active = 1 AND c.district_director IS NOT NULL
-      GROUP BY c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone
+      GROUP BY c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone, c.participation_closed
       ORDER BY c.zone ASC, c.district_director ASC, c.assistant_governor ASC, c.name ASC
     `).all(...REQUIRED_DESIGNATIONS);
 
@@ -578,13 +602,15 @@ router.get('/admin/district-report', async (req, res) => {
 
       const found = club.found_designations ? club.found_designations.split(',') : [];
       const missing = REQUIRED_DESIGNATIONS.filter(d => !found.includes(d));
-      const status = found.length >= 2 ? 'completed' : found.length === 1 ? 'partial' : 'not_registered';
+      const isClosed = Number(club.participation_closed) === 1;
+      const status = isClosed ? 'completed' : (found.length >= 2 ? 'completed' : found.length === 1 ? 'partial' : 'not_registered');
       zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
         name: club.name,
         ggr: club.ggr,
         status,
+        participation_closed: isClosed,
         required_present: found,
-        required_missing: missing,
+        required_missing: isClosed ? [] : missing,
       });
     }
 
@@ -631,10 +657,16 @@ router.post('/admin/send-ag-reminder', async (req, res) => {
         c.name,
         COUNT(DISTINCT d.delegate_designation) AS required_count
       FROM clubs c
-      LEFT JOIN registrations r ON r.club_name = c.name AND r.payment_status = 'success'
+      LEFT JOIN registrations r ON r.payment_status = 'success' AND (
+        r.club_name = c.name
+        OR lower(replace(replace(replace(r.club_name, ' ', ''), '-', ''), '''', ''))
+           = lower(replace(replace(replace(c.name, ' ', ''), '-', ''), '''', ''))
+        OR lower(replace(replace(replace(r.club_name, ' ', ''), '-', ''), '''', ''))
+           = replace(lower(replace(replace(replace(c.name, ' ', ''), '-', ''), '''', '')), 'coimbatore', '')
+      )
       LEFT JOIN delegates d ON d.registration_id = r.id
         AND d.delegate_designation IN (${inClause})
-      WHERE c.assistant_governor = ? AND c.active = 1
+      WHERE c.assistant_governor = ? AND c.active = 1 AND coalesce(c.participation_closed, 0) = 0
       GROUP BY c.name
       HAVING required_count < 2
       ORDER BY c.name ASC

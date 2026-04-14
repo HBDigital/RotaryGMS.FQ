@@ -130,6 +130,7 @@ async function initDatabase() {
     try { db.run("ALTER TABLE clubs ADD COLUMN assistant_governor TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ggr TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE clubs ADD COLUMN ag_phone TEXT DEFAULT NULL"); } catch (e) { /* already exists */ }
+    try { db.run("ALTER TABLE clubs ADD COLUMN participation_closed INTEGER DEFAULT 0"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE transactions ADD COLUMN updated_at DATETIME DEFAULT NULL"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE registrations ADD COLUMN payment_mode TEXT DEFAULT 'online'"); } catch (e) { /* already exists */ }
     try { db.run("ALTER TABLE registrations ADD COLUMN payment_reference TEXT"); } catch (e) { /* already exists */ }

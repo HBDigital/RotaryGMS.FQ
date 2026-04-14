@@ -95,6 +95,31 @@ const AdminDashboard: React.FC = () => {
     'TRF Chair 2026-27': 'TRF',
   };
 
+  const handleToggleClubParticipation = async (clubName: string, closed: boolean) => {
+    const proceed = closed
+      ? window.confirm(`Mark ${clubName} as not participating? It will be treated as completed.`)
+      : window.confirm(`Reopen ${clubName} for participation?`);
+    if (!proceed) return;
+
+    setClubParticipationUpdating(prev => ({ ...prev, [clubName]: true }));
+    try {
+      const resp = await fetch(`${API_URL}/admin/clubs/participation`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ club_name: clubName, closed }),
+      });
+      if (!resp.ok) {
+        alert('Failed to update participation status');
+        return;
+      }
+      fetchDistrictReport();
+    } catch {
+      alert('Failed to update participation status');
+    } finally {
+      setClubParticipationUpdating(prev => ({ ...prev, [clubName]: false }));
+    }
+  };
+
   const handleExportDesignationExcel = async (view: 'designation' | 'club') => {
     try {
       const blob = await fetch(`${API_URL}/admin/export-designation-excel?view=${view}`).then(r => r.blob());
@@ -113,6 +138,7 @@ const AdminDashboard: React.FC = () => {
 
   interface DistrictClub {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
+    participation_closed?: boolean;
     required_present: string[]; required_missing: string[];
   }
   interface AG { name: string; phone: string | null; reminder_sent_today: boolean; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
@@ -128,6 +154,7 @@ const AdminDashboard: React.FC = () => {
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
+  const [clubParticipationUpdating, setClubParticipationUpdating] = useState<Record<string, boolean>>({});
   const [manualEntryModalOpen, setManualEntryModalOpen] = useState(false);
   const [manualPayForm, setManualPayForm] = useState({
     club_name: '',
@@ -659,9 +686,19 @@ const AdminDashboard: React.FC = () => {
                     />
                     <button
                       onClick={() => {
-                        const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Designations Present', 'Designations Missing']];
+                        const rows = [['Zone', 'District Director', 'Assistant Governor', 'GGR', 'Club', 'Status', 'Participation Closed', 'Designations Present', 'Designations Missing']];
                         districtReport.forEach(z => z.district_directors.forEach(dd => dd.assistant_governors.forEach(ag => ag.clubs.forEach(c => {
-                          rows.push([String(z.zone), dd.name, ag.name, c.ggr || '', c.name, c.status, c.required_present.join('; '), c.required_missing.join('; ')]);
+                          rows.push([
+                            String(z.zone),
+                            dd.name,
+                            ag.name,
+                            c.ggr || '',
+                            c.name,
+                            c.status,
+                            c.participation_closed ? 'Yes' : 'No',
+                            c.required_present.join('; '),
+                            c.required_missing.join('; '),
+                          ]);
                         }))));
                         const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
                         const blob = new Blob([csv], { type: 'text/csv' });
@@ -779,22 +816,42 @@ const AdminDashboard: React.FC = () => {
                                                     <span className={club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-green-800 font-medium'}>
                                                       {club.name}
                                                     </span>
+                                                    {club.participation_closed && (
+                                                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Closed</span>
+                                                    )}
                                                     {club.ggr && <span className="text-xs text-gray-400">(GGR: {club.ggr})</span>}
                                                   </div>
-                                                  <span className="text-xs">
-                                                    {club.status === 'not_registered' ? (
-                                                      <span className="text-gray-400">Not registered</span>
-                                                    ) : (
-                                                      <span className="flex flex-wrap gap-1">
-                                                        {club.required_present.map(d => (
-                                                          <span key={d} className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
-                                                        ))}
-                                                        {club.required_missing.map(d => (
-                                                          <span key={d} className="bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
-                                                        ))}
-                                                      </span>
+                                                  <div className="flex items-center gap-3">
+                                                    <span className="text-xs">
+                                                      {club.participation_closed ? (
+                                                        <span className="text-gray-500 italic">Not participating</span>
+                                                      ) : club.status === 'not_registered' ? (
+                                                        <span className="text-gray-400">Not registered</span>
+                                                      ) : (
+                                                        <span className="flex flex-wrap gap-1">
+                                                          {club.required_present.map(d => (
+                                                            <span key={d} className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
+                                                          ))}
+                                                          {club.required_missing.map(d => (
+                                                            <span key={d} className="bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
+                                                          ))}
+                                                        </span>
+                                                      )}
+                                                    </span>
+                                                    {!isViewer && (
+                                                      <button
+                                                        onClick={() => handleToggleClubParticipation(club.name, !club.participation_closed)}
+                                                        disabled={!!clubParticipationUpdating[club.name]}
+                                                        className="text-xs border border-gray-300 text-gray-700 px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-40"
+                                                      >
+                                                        {clubParticipationUpdating[club.name]
+                                                          ? 'Saving…'
+                                                          : club.participation_closed
+                                                            ? '↩ Reopen'
+                                                            : '🚫 Close'}
+                                                      </button>
                                                     )}
-                                                  </span>
+                                                  </div>
                                                 </li>
                                               ))}
                                             </ul>
