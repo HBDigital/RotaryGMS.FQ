@@ -123,19 +123,21 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleExportDesignationExcel = async (view: 'designation' | 'club') => {
+  const handleExportDesignationExcel = async (view: 'designation' | 'club' | 'dd') => {
     try {
-      const blob = await fetch(`${API_URL}/admin/export-designation-excel?view=${view}`).then(r => r.blob());
+      const endpoint = view === 'dd' 
+        ? `${API_URL}/admin/export-dd-wise-excel`
+        : `${API_URL}/admin/export-designation-excel?view=${view}`;
+      const blob = await fetch(endpoint).then(r => r.blob());
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `GMS2026_${view}_report_${Date.now()}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GMS2026_${view}_report_${Date.now()}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting designation Excel:', error);
-      alert('Failed to export designation report');
+      alert('Failed to export Excel file');
     }
   };
 
@@ -153,7 +155,8 @@ const AdminDashboard: React.FC = () => {
   const [agList, setAgList] = useState<AgListItem[]>([]);
   const [districtLoading, setDistrictLoading] = useState(false);
   const [districtFilter, setDistrictFilter] = useState('');
-  const [designationView, setDesignationView] = useState<'designation' | 'club'>('designation');
+  const [designationView, setDesignationView] = useState<'designation' | 'club' | 'dd'>('designation');
+  const [ddWiseData, setDdWiseData] = useState<any>({});
   const [expandedDDs, setExpandedDDs] = useState<Record<string, boolean>>({});
   const [expandedAGs, setExpandedAGs] = useState<Record<string, boolean>>({});
   const [reminderStatus, setReminderStatus] = useState<Record<string, 'idle' | 'sending' | 'sent' | 'cooldown'>>({});
@@ -256,6 +259,17 @@ const AdminDashboard: React.FC = () => {
       setNewCloseDate(closeDate);
     } catch (error) {
       console.error('Error fetching registration close date:', error);
+    }
+  };
+
+  const fetchDdWiseReport = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/dd-wise-report`).then(r => r.json());
+      if (res.success) {
+        setDdWiseData(res.data);
+      }
+    } catch (error) {
+      console.error('Error fetching DD-wise report:', error);
     }
   };
 
@@ -983,6 +997,12 @@ const AdminDashboard: React.FC = () => {
                     >
                       By Club
                     </button>
+                    <button
+                      onClick={() => { setDesignationView('dd'); fetchDdWiseReport(); }}
+                      className={`px-4 py-2 text-sm font-medium ${designationView === 'dd' ? 'border-b-2 border-blue-500 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    >
+                      DD Wise
+                    </button>
                   </nav>
                 </div>
 
@@ -1021,40 +1041,82 @@ const AdminDashboard: React.FC = () => {
                       ))}
                     </div>
                   )
-                ) : clubDesignationReport.length === 0 ? (
-                  <p className="text-sm text-gray-500">No successful registrations found.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {clubDesignationReport.map((item) => (
-                      <div key={item.club_name} className="border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="font-semibold text-gray-900">{item.club_name}</p>
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
-                            Total: {item.total_registered}
-                          </span>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-sm">
-                            <thead>
-                              <tr className="text-left text-gray-500 border-b">
-                                <th className="py-1 pr-3">Person Name</th>
-                                <th className="py-1">Designation</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {item.registrations.map((reg, idx) => (
-                                <tr key={`${item.club_name}-${idx}`} className="border-b last:border-0">
-                                  <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
-                                  <td className="py-1 text-gray-700">{reg.designation}</td>
+                ) : designationView === 'club' ? (
+                  clubDesignationReport.length === 0 ? (
+                    <p className="text-sm text-gray-500">No successful registrations found.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {clubDesignationReport.map((item) => (
+                        <div key={item.club_name} className="border border-gray-200 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="font-semibold text-gray-900">{item.club_name}</p>
+                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-semibold">
+                              Total: {item.total_registered}
+                            </span>
+                          </div>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-gray-500 border-b">
+                                  <th className="py-1 pr-3">Person Name</th>
+                                  <th className="py-1">Designation</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody>
+                                {item.registrations.map((reg, idx) => (
+                                  <tr key={`${item.club_name}-${idx}`} className="border-b last:border-0">
+                                    <td className="py-1 pr-3 text-gray-800">{reg.person_name}</td>
+                                    <td className="py-1 text-gray-700">{reg.designation}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )
+                ) : designationView === 'dd' ? (
+                  Object.keys(ddWiseData).length === 0 ? (
+                    <p className="text-sm text-gray-500">No data available. Loading...</p>
+                  ) : (
+                    <div className="space-y-6">
+                      {Object.keys(ddWiseData).sort().map((dd) => (
+                        <div key={dd} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                          <h3 className="text-lg font-bold text-gray-900 mb-4">District Director: {dd}</h3>
+                          <div className="space-y-4">
+                            {Object.keys(ddWiseData[dd]).sort().map((ag) => (
+                              <div key={`${dd}-${ag}`} className="border border-gray-200 rounded-lg p-3 bg-white">
+                                <h4 className="text-md font-semibold text-gray-800 mb-3">AG: {ag}</h4>
+                                <div className="space-y-3">
+                                  {Object.keys(ddWiseData[dd][ag]).sort().map((ggr) => (
+                                    <div key={`${dd}-${ag}-${ggr}`}>
+                                      {ggr && <p className="text-sm font-medium text-gray-700 mb-2">GGR: {ggr}</p>}
+                                      <div className="space-y-2">
+                                        {Object.keys(ddWiseData[dd][ag][ggr]).sort().map((club) => (
+                                          <div key={`${dd}-${ag}-${ggr}-${club}`} className="border-l-4 border-blue-400 pl-3 py-2 bg-blue-50">
+                                            <p className="text-sm font-semibold text-gray-900 mb-1">{club}</p>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                                              {ddWiseData[dd][ag][ggr][club].map((delegate: any, idx: number) => (
+                                                <div key={idx} className="text-xs text-gray-700">
+                                                  <span className="font-medium">{delegate.designation}:</span> {delegate.name}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : null}
               </div>
             )}
 

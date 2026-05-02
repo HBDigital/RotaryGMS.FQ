@@ -713,6 +713,204 @@ router.get('/admin/unregistered-clubs', async (req, res) => {
   }
 });
 
+// Get DD-wise designation report
+router.get('/admin/dd-wise-report', async (req, res) => {
+  try {
+    const registrations = await db.prepare(`
+      SELECT 
+        r.id,
+        r.club_name,
+        c.district_director,
+        c.assistant_governor,
+        c.ggr,
+        d.delegate_name,
+        d.delegate_designation
+      FROM registrations r
+      JOIN delegates d ON d.registration_id = r.id
+      LEFT JOIN clubs c ON c.name = r.club_name
+      WHERE r.payment_status = 'success'
+      ORDER BY c.district_director ASC, c.assistant_governor ASC, c.ggr ASC, r.club_name ASC, d.delegate_designation ASC
+    `).all();
+
+    // Group by DD -> AG -> GGR -> Club
+    const ddMap = {};
+    
+    registrations.forEach(reg => {
+      const dd = reg.district_director || 'Unknown DD';
+      const ag = reg.assistant_governor || 'Unknown AG';
+      const ggr = reg.ggr || '';
+      const club = reg.club_name;
+      
+      if (!ddMap[dd]) ddMap[dd] = {};
+      if (!ddMap[dd][ag]) ddMap[dd][ag] = {};
+      if (!ddMap[dd][ag][ggr]) ddMap[dd][ag][ggr] = {};
+      if (!ddMap[dd][ag][ggr][club]) ddMap[dd][ag][ggr][club] = [];
+      
+      ddMap[dd][ag][ggr][club].push({
+        name: reg.delegate_name,
+        designation: reg.delegate_designation
+      });
+    });
+
+    res.status(200).json({ success: true, data: ddMap });
+  } catch (error) {
+    console.error('Error fetching DD-wise report:', error);
+    res.status(500).json({ error: 'Failed to fetch DD-wise report' });
+  }
+});
+
+// Export DD-wise report to Excel
+router.get('/admin/export-dd-wise-excel', async (req, res) => {
+  try {
+    const registrations = await db.prepare(`
+      SELECT 
+        r.club_name,
+        c.district_director,
+        c.assistant_governor,
+        c.ggr,
+        d.delegate_name,
+        d.delegate_designation
+      FROM registrations r
+      JOIN delegates d ON d.registration_id = r.id
+      LEFT JOIN clubs c ON c.name = r.club_name
+      WHERE r.payment_status = 'success'
+      ORDER BY c.district_director ASC, c.assistant_governor ASC, c.ggr ASC, r.club_name ASC, d.delegate_designation ASC
+    `).all();
+
+    const workbook = new ExcelJS.Workbook();
+    
+    // Sheet 1: DD-wise Report
+    const sheet1 = workbook.addWorksheet('DD Wise Report');
+    
+    // Add headers
+    const headers = ['District Director', 'Assistant Governor', 'GGR', 'Clubs', 'District Official', '', 'Registered', '', ''];
+    const subHeaders = ['', '', '', '', 'Name', 'Name', 'Sign'];
+    
+    sheet1.addRow(headers);
+    sheet1.addRow(subHeaders);
+    
+    // Merge cells for headers
+    sheet1.mergeCells('A1:A2'); // District Director
+    sheet1.mergeCells('B1:B2'); // Assistant Governor
+    sheet1.mergeCells('C1:C2'); // GGR
+    sheet1.mergeCells('D1:D2'); // Clubs
+    sheet1.mergeCells('E1:F1'); // District Official
+    sheet1.mergeCells('G1:I1'); // Registered
+    
+    // Style headers
+    const headerStyle = {
+      font: { bold: true },
+      alignment: { horizontal: 'center', vertical: 'middle' },
+      border: {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      }
+    };
+    
+    sheet1.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+    sheet1.getRow(2).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+    
+    // Group data by DD -> AG -> GGR -> Club
+    const ddMap = {};
+    registrations.forEach(reg => {
+      const dd = reg.district_director || '';
+      const ag = reg.assistant_governor || '';
+      const ggr = reg.ggr || '';
+      const club = reg.club_name;
+      
+      if (!ddMap[dd]) ddMap[dd] = {};
+      if (!ddMap[dd][ag]) ddMap[dd][ag] = {};
+      if (!ddMap[dd][ag][ggr]) ddMap[dd][ag][ggr] = {};
+      if (!ddMap[dd][ag][ggr][club]) ddMap[dd][ag][ggr][club] = [];
+      
+      ddMap[dd][ag][ggr][club].push({
+        name: reg.delegate_name,
+        designation: reg.delegate_designation
+      });
+    });
+    
+    // Add data rows
+    let currentRow = 3;
+    Object.keys(ddMap).sort().forEach(dd => {
+      const ddStartRow = currentRow;
+      
+      Object.keys(ddMap[dd]).sort().forEach(ag => {
+        const agStartRow = currentRow;
+        
+        Object.keys(ddMap[dd][ag]).sort().forEach(ggr => {
+          const ggrStartRow = currentRow;
+          
+          Object.keys(ddMap[dd][ag][ggr]).sort().forEach(club => {
+            const delegates = ddMap[dd][ag][ggr][club];
+            const clubStartRow = currentRow;
+            
+            delegates.forEach((delegate, idx) => {
+              sheet1.addRow([
+                idx === 0 && clubStartRow === ddStartRow ? dd : '',
+                idx === 0 && clubStartRow === agStartRow ? ag : '',
+                idx === 0 && clubStartRow === ggrStartRow ? ggr : '',
+                idx === 0 ? club : '',
+                delegate.designation,
+                delegate.name,
+                ''
+              ]);
+              currentRow++;
+            });
+          });
+        });
+      });
+    });
+    
+    // Set column widths
+    sheet1.getColumn(1).width = 25; // DD
+    sheet1.getColumn(2).width = 25; // AG
+    sheet1.getColumn(3).width = 25; // GGR
+    sheet1.getColumn(4).width = 25; // Clubs
+    sheet1.getColumn(5).width = 30; // District Official Name
+    sheet1.getColumn(6).width = 30; // Registered Name
+    sheet1.getColumn(7).width = 15; // Sign
+    
+    // Sheet 2: All Registrations
+    const sheet2 = workbook.addWorksheet('All Registrations');
+    sheet2.addRow(['Name', 'Club Name', 'Designation']);
+    
+    const allRegs = await db.prepare(`
+      SELECT d.delegate_name, r.club_name, d.delegate_designation
+      FROM registrations r
+      JOIN delegates d ON d.registration_id = r.id
+      WHERE r.payment_status = 'success'
+      ORDER BY d.delegate_name ASC
+    `).all();
+    
+    allRegs.forEach(reg => {
+      sheet2.addRow([reg.delegate_name, reg.club_name, reg.delegate_designation]);
+    });
+    
+    sheet2.getColumn(1).width = 30;
+    sheet2.getColumn(2).width = 30;
+    sheet2.getColumn(3).width = 30;
+    
+    // Style sheet 2 header
+    sheet2.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+    
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_DD_Wise_Report_${Date.now()}.xlsx`);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Error exporting DD-wise Excel:', error);
+    res.status(500).json({ error: 'Failed to export DD-wise report' });
+  }
+});
+
 // Get registration closure date setting
 router.get('/settings/registration-close-date', async (req, res) => {
   try {
