@@ -5,8 +5,20 @@ const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razo
 const { sendReceiptEmail } = require('../utils/email');
 const { sendWhatsAppReceipt } = require('../utils/whatsapp');
 
-const REGISTRATION_CLOSE_DATE_IST = process.env.REGISTRATION_CLOSE_DATE_IST || '2026-05-03';
-const isRegistrationClosed = () => {
+const getRegistrationCloseDate = async () => {
+  try {
+    const setting = await db.prepare(`
+      SELECT setting_value FROM settings WHERE setting_key = 'registration_close_date_ist'
+    `).get();
+    return setting?.setting_value || '2026-05-03';
+  } catch (error) {
+    console.error('Error fetching registration close date:', error);
+    return '2026-05-03';
+  }
+};
+
+const isRegistrationClosed = async () => {
+  const REGISTRATION_CLOSE_DATE_IST = await getRegistrationCloseDate();
   const parts = REGISTRATION_CLOSE_DATE_IST.split('-').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
   const [year, month, day] = parts;
@@ -17,9 +29,11 @@ const isRegistrationClosed = () => {
 
 router.post('/registrations', async (req, res) => {
   try {
-    if (isRegistrationClosed()) {
+    const closed = await isRegistrationClosed();
+    if (closed) {
+      const closeDate = await getRegistrationCloseDate();
       return res.status(403).json({
-        error: `Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`,
+        error: `Registrations are closed from ${closeDate} (IST)`,
         closed: true,
       });
     }

@@ -713,4 +713,42 @@ router.get('/admin/unregistered-clubs', async (req, res) => {
   }
 });
 
+// Get registration closure date setting
+router.get('/settings/registration-close-date', async (req, res) => {
+  try {
+    const setting = await db.prepare(`
+      SELECT setting_value FROM settings WHERE setting_key = 'registration_close_date_ist'
+    `).get();
+    
+    const closeDate = setting?.setting_value || '2026-05-03';
+    res.status(200).json({ success: true, registration_close_date_ist: closeDate });
+  } catch (error) {
+    console.error('Error fetching registration close date:', error);
+    res.status(500).json({ error: 'Failed to fetch registration close date' });
+  }
+});
+
+// Update registration closure date setting (admin only)
+router.post('/admin/settings/registration-close-date', async (req, res) => {
+  try {
+    const { date } = req.body;
+    
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return res.status(400).json({ error: 'Invalid date format. Use YYYY-MM-DD' });
+    }
+
+    await db.prepare(`
+      INSERT INTO settings (setting_key, setting_value, updated_at)
+      VALUES ('registration_close_date_ist', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(setting_key)
+      DO UPDATE SET setting_value = excluded.setting_value, updated_at = CURRENT_TIMESTAMP
+    `).run(date);
+
+    res.status(200).json({ success: true, registration_close_date_ist: date });
+  } catch (error) {
+    console.error('Error updating registration close date:', error);
+    res.status(500).json({ error: 'Failed to update registration close date' });
+  }
+});
+
 module.exports = router;

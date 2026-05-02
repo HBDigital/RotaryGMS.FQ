@@ -114,6 +114,13 @@ async function initDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        setting_key TEXT NOT NULL UNIQUE,
+        setting_value TEXT NOT NULL,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_registration_id ON transactions(registration_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(razorpay_order_id);
     `;
@@ -151,6 +158,14 @@ async function initDatabase() {
       );
     }
     console.log('✅ Admin users seeded/updated');
+
+    // Initialize default settings
+    db.run(
+      `INSERT INTO settings (setting_key, setting_value)
+       VALUES ('registration_close_date_ist', '2026-05-03')
+       ON CONFLICT(setting_key) DO NOTHING`
+    );
+    console.log('✅ Default settings initialized');
 
     // Seed AG phone numbers (always update so new entries get phones)
     const agPhones = [

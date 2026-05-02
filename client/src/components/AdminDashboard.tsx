@@ -85,7 +85,10 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district' | 'settings'>('overview');
+  const [registrationCloseDate, setRegistrationCloseDate] = useState('2026-05-03');
+  const [newCloseDate, setNewCloseDate] = useState('2026-05-03');
+  const [savingSettings, setSavingSettings] = useState(false);
 
   const DESIGNATION_SHORT: Record<string, string> = {
     'President 2025-26': 'Pres\'26',
@@ -245,6 +248,43 @@ const AdminDashboard: React.FC = () => {
   )).sort((a, b) => a.localeCompare(b));
   const pendingClubCount = Math.max(0, districtClubs.length - registeredActiveClubCount - closedClubNames.length);
 
+  const fetchRegistrationCloseDate = async () => {
+    try {
+      const res = await fetch(`${API_URL}/settings/registration-close-date`).then(r => r.json());
+      const closeDate = res.registration_close_date_ist || '2026-05-03';
+      setRegistrationCloseDate(closeDate);
+      setNewCloseDate(closeDate);
+    } catch (error) {
+      console.error('Error fetching registration close date:', error);
+    }
+  };
+
+  const handleSaveCloseDate = async () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newCloseDate)) {
+      alert('Invalid date format. Use YYYY-MM-DD');
+      return;
+    }
+    setSavingSettings(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/settings/registration-close-date`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: newCloseDate }),
+      });
+      if (res.ok) {
+        setRegistrationCloseDate(newCloseDate);
+        alert('Registration closure date updated successfully!');
+      } else {
+        alert('Failed to update registration closure date');
+      }
+    } catch (error) {
+      console.error('Error updating registration close date:', error);
+      alert('Failed to update registration closure date');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
       navigate('/admin-login');
@@ -253,6 +293,7 @@ const AdminDashboard: React.FC = () => {
     fetchDashboardData();
     fetchTransactions(1);
     fetchDistrictReport();
+    fetchRegistrationCloseDate();
   }, [navigate]);
 
   useEffect(() => {
@@ -577,6 +618,18 @@ const AdminDashboard: React.FC = () => {
               >
                 District Report
               </button>
+              {!isViewer && (
+                <button
+                  onClick={() => setActiveTab('settings')}
+                  className={`px-6 py-4 text-sm font-medium ${
+                    activeTab === 'settings'
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Settings
+                </button>
+              )}
             </nav>
           </div>
 
@@ -1072,6 +1125,74 @@ const AdminDashboard: React.FC = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'settings' && !isViewer && (
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">System Settings</h2>
+                
+                <div className="bg-white border border-gray-200 rounded-lg p-6 max-w-2xl">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Registration Closure Date</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Set the date when registrations will automatically close. The date is in Indian Standard Time (IST).
+                  </p>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Current Closure Date (IST)
+                      </label>
+                      <div className="bg-gray-50 border border-gray-300 rounded-lg px-4 py-3 text-gray-900 font-medium">
+                        {registrationCloseDate}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        New Closure Date (YYYY-MM-DD)
+                      </label>
+                      <input
+                        type="date"
+                        value={newCloseDate}
+                        onChange={(e) => setNewCloseDate(e.target.value)}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Registrations will close at 12:00 AM IST on this date
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 pt-2">
+                      <button
+                        onClick={handleSaveCloseDate}
+                        disabled={savingSettings || newCloseDate === registrationCloseDate}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingSettings ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      <button
+                        onClick={() => setNewCloseDate(registrationCloseDate)}
+                        disabled={savingSettings}
+                        className="bg-gray-200 text-gray-700 px-6 py-2 rounded-lg font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <div className="flex items-start gap-3">
+                      <svg className="w-5 h-5 text-blue-600 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <div className="text-sm text-blue-800">
+                        <p className="font-semibold mb-1">Note:</p>
+                        <p>Changes to the registration closure date take effect immediately. Users will see the updated date on the registration form.</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

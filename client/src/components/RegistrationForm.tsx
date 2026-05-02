@@ -22,15 +22,6 @@ declare global {
 }
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
-const REGISTRATION_CLOSE_DATE_IST = process.env.REACT_APP_REGISTRATION_CLOSE_DATE_IST || '2026-05-03';
-const isRegistrationClosedIST = () => {
-  const parts = REGISTRATION_CLOSE_DATE_IST.split('-').map(Number);
-  if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
-  const [year, month, day] = parts;
-  const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
-  const closeAtUtcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - istOffsetMs;
-  return Date.now() >= closeAtUtcMs;
-};
 
 const RegistrationForm: React.FC = () => {
   const navigate = useNavigate();
@@ -46,13 +37,36 @@ const RegistrationForm: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [clubs, setClubs] = useState<string[]>([]);
-  const [registrationClosed] = useState(isRegistrationClosedIST());
+  const [registrationClosed, setRegistrationClosed] = useState(false);
+  const [registrationCloseDate, setRegistrationCloseDate] = useState('2026-05-03');
 
   useEffect(() => {
+    // Fetch clubs
     fetch(`${API_URL}/clubs`)
       .then(res => res.json())
       .then(data => setClubs(data.clubs.map((c: { name: string }) => c.name)))
       .catch(() => setClubs([]));
+
+    // Fetch registration closure date
+    fetch(`${API_URL}/settings/registration-close-date`)
+      .then(res => res.json())
+      .then(data => {
+        const closeDate = data.registration_close_date_ist || '2026-05-03';
+        setRegistrationCloseDate(closeDate);
+        
+        // Check if registration is closed
+        const parts = closeDate.split('-').map(Number);
+        if (parts.length === 3 && !parts.some(Number.isNaN)) {
+          const [year, month, day] = parts;
+          const istOffsetMs = (5 * 60 + 30) * 60 * 1000;
+          const closeAtUtcMs = Date.UTC(year, month - 1, day, 0, 0, 0) - istOffsetMs;
+          setRegistrationClosed(Date.now() >= closeAtUtcMs);
+        }
+      })
+      .catch(() => {
+        setRegistrationCloseDate('2026-05-03');
+        setRegistrationClosed(false);
+      });
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -232,7 +246,7 @@ const RegistrationForm: React.FC = () => {
     e.preventDefault();
 
     if (registrationClosed) {
-      alert(`Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`);
+      alert(`Registrations are closed from ${registrationCloseDate} (IST)`);
       return;
     }
 
@@ -251,7 +265,7 @@ const RegistrationForm: React.FC = () => {
       const responseBody = apiResult.body;
 
       if (responseBody?.closed) {
-        alert(responseBody.error || `Registrations are closed from ${REGISTRATION_CLOSE_DATE_IST} (IST)`);
+        alert(responseBody.error || `Registrations are closed from ${registrationCloseDate} (IST)`);
         setLoading(false);
         return;
       }
@@ -280,7 +294,7 @@ const RegistrationForm: React.FC = () => {
             <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 03 May 2026 | <b>Venue:</b> Grant Regent Hotel, Coimbatore</p>
             {registrationClosed && (
               <div className="mt-4 inline-block bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium">
-                Registrations are closed from {REGISTRATION_CLOSE_DATE_IST} (IST)
+                Registrations are closed from {registrationCloseDate} (IST)
               </div>
             )}
           </div>
