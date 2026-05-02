@@ -5,7 +5,7 @@ const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razo
 const { sendReceiptEmail } = require('../utils/email');
 const { sendWhatsAppReceipt } = require('../utils/whatsapp');
 
-const REGISTRATION_CLOSE_DATE_IST = process.env.REGISTRATION_CLOSE_DATE_IST || '2026-05-01';
+const REGISTRATION_CLOSE_DATE_IST = process.env.REGISTRATION_CLOSE_DATE_IST || '2026-05-03';
 const isRegistrationClosed = () => {
   const parts = REGISTRATION_CLOSE_DATE_IST.split('-').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return false;
