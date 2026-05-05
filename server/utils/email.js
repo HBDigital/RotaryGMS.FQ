@@ -24,7 +24,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
         <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
           
           <div style="background:#1e40af;padding:24px 32px;text-align:center;">
-            <h1 style="color:#fff;margin:0;font-size:22px;">Rotary District 3206 - 3rd District Conference</h1>
+            <h1 style="color:#fff;margin:0;font-size:22px;">Rotary District 3206 - District Learning Assembly</h1>
             <p style="color:#bfdbfe;margin:4px 0 0;font-size:14px;">Registration Confirmation</p>
           </div>
 
@@ -35,7 +35,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
 
             <p style="color:#374151;font-size:16px;margin-bottom:24px;">Dear <strong>${name}</strong>,</p>
             <p style="color:#6b7280;font-size:14px;margin-bottom:24px;">
-              Your registration for <strong>3rd District Conference - Rotary District 3206</strong> has been successfully confirmed. 
+              Your registration for <strong>District Learning Assembly - Rotary District 3206</strong> has been successfully confirmed. 
               Please find your receipt details below.
             </p>
 
@@ -68,7 +68,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
           </div>
 
           <div style="background:#f9fafb;padding:16px 32px;text-align:center;border-top:1px solid #e5e7eb;">
-            <p style="margin:0;color:#9ca3af;font-size:12px;">Rotary District 3206 - 3rd District Conference | Powered by FeeQuick</p>
+            <p style="margin:0;color:#9ca3af;font-size:12px;">Rotary District 3206 - District Learning Assembly | Powered by FeeQuick</p>
           </div>
         </div>
       </body>
@@ -78,7 +78,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
     await transporter.sendMail({
       from: `"${process.env.FROM_NAME || 'Rotary 3206 GMS 2026'}" <${process.env.FROM_EMAIL || 'noreply@gms.feequick.com'}>`,
       to: email,
-      subject: `Registration Confirmed — Receipt ${receipt_no} | 3rd District Conference`,
+      subject: `Registration Confirmed — Receipt ${receipt_no} | District Learning Assembly`,
       html,
     });
 
