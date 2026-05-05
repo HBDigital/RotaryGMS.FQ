@@ -27,6 +27,16 @@ const isRegistrationClosed = async () => {
   return Date.now() >= closeAtUtcMs;
 };
 
+const calculateAmount = (delegate_count) => {
+  if (delegate_count === 23) return 20000;
+  if (delegate_count >= 19 && delegate_count <= 22) return 17500 + ((delegate_count - 18) * 1200);
+  if (delegate_count === 18) return 17500;
+  if (delegate_count >= 13 && delegate_count <= 17) return 13500 + ((delegate_count - 12) * 1200);
+  if (delegate_count === 12) return 13500;
+  if (delegate_count >= 1 && delegate_count <= 11) return delegate_count * 1200;
+  throw new Error('Invalid delegate count. Must be between 1 and 23.');
+};
+
 router.post('/registrations', async (req, res) => {
   try {
     const closed = await isRegistrationClosed();
@@ -40,23 +50,23 @@ router.post('/registrations', async (req, res) => {
 
     console.log('Registration request received:', req.body);
     
-    const { name, email, phone, club_name, delegate_count, delegates } = req.body;
+    const { name, email, phone, club_name, delegate_count } = req.body;
 
     // Enhanced validation
-    if (!name || !email || !phone || !club_name || !delegate_count || !delegates) {
-      console.error('Missing required fields:', { name, email, phone, club_name, delegate_count, delegates });
+    if (!name || !email || !phone || !club_name || !delegate_count) {
+      console.error('Missing required fields:', { name, email, phone, club_name, delegate_count });
       return res.status(400).json({ 
         error: 'All fields are required',
-        missing: { name, email, phone, club_name, delegate_count, delegates }
+        missing: { name, email, phone, club_name, delegate_count }
       });
     }
 
-    if (delegates.length !== delegate_count) {
-      console.error('Delegate count mismatch:', { delegate_count, delegatesLength: delegates.length });
+    // Validate delegate count
+    const delegateCountNum = parseInt(delegate_count);
+    if (isNaN(delegateCountNum) || delegateCountNum < 1 || delegateCountNum > 23) {
       return res.status(400).json({ 
-        error: 'Delegate count mismatch',
-        expected: delegate_count,
-        received: delegates.length
+        error: 'Invalid delegate count. Must be between 1 and 23.',
+        delegate_count
       });
     }
 
@@ -70,7 +80,7 @@ router.post('/registrations', async (req, res) => {
       return res.status(400).json({ error: 'Phone must be 10 digits' });
     }
 
-    const total_amount = delegate_count * 1050;
+    const total_amount = calculateAmount(delegateCountNum);
     console.log('Creating registration:', { name, email, total_amount });
 
     const insertRegistration = db.prepare(`
@@ -82,20 +92,7 @@ router.post('/registrations', async (req, res) => {
     const registrationId = result.lastInsertRowid;
     
     console.log('Registration created with ID:', registrationId);
-
-    const insertDelegate = db.prepare(`
-      INSERT INTO delegates (registration_id, delegate_name, delegate_designation)
-      VALUES (?, ?, ?)
-    `);
-
-    for (const delegate of delegates) {
-      if (!delegate.name || !delegate.designation) {
-        throw new Error(`Delegate name and designation are required for delegate ${delegates.indexOf(delegate) + 1}`);
-      }
-      await insertDelegate.run(registrationId, delegate.name, delegate.designation);
-    }
-
-    console.log('Delegates added for registration:', registrationId);
+    console.log('Delegate count:', delegateCountNum, 'Amount:', total_amount);
 
     res.status(201).json({
       success: true,
@@ -299,12 +296,7 @@ router.post('/verify-payment', async (req, res) => {
 
     console.log(`✅ Payment verified: Registration ${registrationId}, Receipt ${receipt_no}, Order ${razorpay_order_id}, Payment ${razorpay_payment_id}`);
 
-    // Step 6: Fetch delegates for notifications
-    const delegates = await db.prepare(`
-      SELECT delegate_name, delegate_designation FROM delegates WHERE registration_id = ?
-    `).all(registrationId);
-
-    // Step 7: Send email and WhatsApp notifications (non-blocking)
+    // Step 6: Send email and WhatsApp notifications (non-blocking)
     const notificationData = {
       name: registration.name,
       email: registration.email,
@@ -314,7 +306,6 @@ router.post('/verify-payment', async (req, res) => {
       total_amount: registration.total_amount,
       receipt_no,
       payment_id: razorpay_payment_id,
-      delegates,
     };
 
     const updateNotificationStatus = async (emailSent, whatsappSent) => {

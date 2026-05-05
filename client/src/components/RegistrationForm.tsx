@@ -1,18 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-interface Delegate {
-  name: string;
-  designation: string;
-}
-
 interface FormData {
   name: string;
   email: string;
   phone: string;
   club_name: string;
   delegate_count: number;
-  delegates: Delegate[];
 }
 
 declare global {
@@ -31,7 +25,6 @@ const RegistrationForm: React.FC = () => {
     phone: '',
     club_name: '',
     delegate_count: 1,
-    delegates: [{ name: '', designation: '' }],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -79,21 +72,7 @@ const RegistrationForm: React.FC = () => {
 
   const handleDelegateCountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const count = parseInt(e.target.value);
-    const newDelegates = Array.from({ length: count }, (_, i) => 
-      formData.delegates[i] || { name: '', designation: '' }
-    );
-    setFormData({ ...formData, delegate_count: count, delegates: newDelegates });
-  };
-
-  const handleDelegateChange = (index: number, field: 'name' | 'designation', value: string) => {
-    const newDelegates = [...formData.delegates];
-    newDelegates[index][field] = value;
-    setFormData({ ...formData, delegates: newDelegates });
-    
-    const errorKey = `delegate_${index}_${field}`;
-    if (errors[errorKey]) {
-      setErrors({ ...errors, [errorKey]: '' });
-    }
+    setFormData({ ...formData, delegate_count: count });
   };
 
   const validateForm = (): boolean => {
@@ -111,15 +90,9 @@ const RegistrationForm: React.FC = () => {
       newErrors.phone = 'Phone must be 10 digits';
     }
     if (!formData.club_name.trim()) newErrors.club_name = 'Club name is required';
-
-    formData.delegates.forEach((delegate, index) => {
-      if (!delegate.name.trim()) {
-        newErrors[`delegate_${index}_name`] = `Delegate ${index + 1} name is required`;
-      }
-      if (!delegate.designation.trim()) {
-        newErrors[`delegate_${index}_designation`] = `Delegate ${index + 1} designation is required`;
-      }
-    });
+    if (formData.delegate_count < 1 || formData.delegate_count > 23) {
+      newErrors.delegate_count = 'Delegate count must be between 1 and 23';
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -281,7 +254,16 @@ const RegistrationForm: React.FC = () => {
     }
   };
 
-  const totalAmount = formData.delegate_count * 1050;
+  const totalAmount = (() => {
+    const count = formData.delegate_count;
+    if (count === 23) return 20000;
+    if (count >= 19 && count <= 22) return 17500 + ((count - 18) * 1200);
+    if (count === 18) return 17500;
+    if (count >= 13 && count <= 17) return 13500 + ((count - 12) * 1200);
+    if (count === 12) return 13500;
+    if (count >= 1 && count <= 11) return count * 1200;
+    return 0;
+  })();
 
   return (
     <div className="min-h-screen py-4 px-4 sm:px-6 lg:px-8">
@@ -289,7 +271,7 @@ const RegistrationForm: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
           <div className="text-center mb-6 sm:mb-8">
             <img src="/rotary-logo.png" alt="Rotary International" className="h-16 sm:h-20 mx-auto mb-4" />
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary 3206, GMS 2026</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary District 3206 - 3rd District Conference</h1>
             <p className="text-sm sm:text-base text-gray-600">Register your delegates for the event</p>
             <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 03 May 2026 | <b>Venue:</b> Grant Regent Hotel, Coimbatore</p>
             {registrationClosed && (
@@ -306,19 +288,40 @@ const RegistrationForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name <span className="text-red-500">*</span>
+                    Number of Delegates <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      errors.name ? 'border-red-500' : 'border-gray-300'
+                  <select
+                    name="delegate_count"
+                    value={formData.delegate_count}
+                    onChange={handleDelegateCountChange}
+                    className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
+                      errors.delegate_count ? 'border-red-500' : 'border-gray-300'
                     }`}
-                    placeholder="Enter your full name"
-                  />
-                  {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                  >
+                    <option value="1">1 Delegate - ₹1,200</option>
+                    <option value="2">2 Delegates - ₹2,400</option>
+                    <option value="3">3 Delegates - ₹3,600</option>
+                    <option value="4">4 Delegates - ₹4,800</option>
+                    <option value="5">5 Delegates - ₹6,000</option>
+                    <option value="6">6 Delegates - ₹7,200</option>
+                    <option value="7">7 Delegates - ₹8,400</option>
+                    <option value="8">8 Delegates - ₹9,600</option>
+                    <option value="9">9 Delegates - ₹10,800</option>
+                    <option value="10">10 Delegates - ₹12,000</option>
+                    <option value="11">11 Delegates - ₹13,200</option>
+                    <option value="12">12 Delegates - ₹13,500</option>
+                    <option value="13">13 Delegates - ₹14,700</option>
+                    <option value="14">14 Delegates - ₹15,900</option>
+                    <option value="15">15 Delegates - ₹17,100</option>
+                    <option value="16">16 Delegates - ₹18,300</option>
+                    <option value="17">17 Delegates - ₹19,500</option>
+                    <option value="18">18 Delegates - ₹17,500</option>
+                    <option value="19">19 Delegates - ₹18,700</option>
+                    <option value="20">20 Delegates - ₹19,900</option>
+                    <option value="21">21 Delegates - ₹21,100</option>
+                    <option value="22">22 Delegates - ₹22,300</option>
+                    <option value="23">23 Delegates - ₹20,000</option>
+                  </select>
                 </div>
 
                 <div>
@@ -409,68 +412,7 @@ const RegistrationForm: React.FC = () => {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                {formData.delegates.map((delegate, index) => (
-                  <div key={index} className="bg-white rounded-lg p-4 border border-gray-200">
-                    <h3 className="font-medium text-gray-700 mb-3">Delegate {index + 1}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Name <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={delegate.name}
-                          onChange={(e) => handleDelegateChange(index, 'name', e.target.value)}
-                          className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                            errors[`delegate_${index}_name`] ? 'border-red-500' : 'border-gray-300'
-                          }`}
-                          placeholder="Delegate name"
-                        />
-                        {errors[`delegate_${index}_name`] && (
-                          <p className="text-red-500 text-sm mt-1">{errors[`delegate_${index}_name`]}</p>
-                        )}
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Designation <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <select
-                            value={delegate.designation}
-                            onChange={(e) => handleDelegateChange(index, 'designation', e.target.value)}
-                            className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
-                              errors[`delegate_${index}_designation`] ? 'border-red-500' : 'border-gray-300'
-                            }`}
-                          >
-                            <option value="">Select Designation</option>
-                            <option value="President 2025-26">President 2025-26</option>
-                            <option value="President Elect(2026-27)">President Elect(2026-27)</option>
-                            <option value="Treasurer 2026-27">Treasurer 2026-27</option>
-                            <option value="Secretary elect 2026-27">Secretary elect 2026-27</option>
-                            <option value="TRF Chair 2026-27">TRF Chair 2026-27</option>
-                            <option value="Member">Member</option>
-                            <option value="Rotaract">Rotaract</option>
-                            <option value="Assistant Governor">Assistant Governor</option>
-                            <option value="Governor Group Representative">Governor Group Representative</option>
-                            <option value="District Director">District Director</option>
-                            <option value="District official">District official</option>
-                          </select>
-                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-500">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
                           </div>
-                        </div>
-                        {errors[`delegate_${index}_designation`] && (
-                          <p className="text-red-500 text-sm mt-1">{errors[`delegate_${index}_designation`]}</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
@@ -478,7 +420,7 @@ const RegistrationForm: React.FC = () => {
                   <p className="text-sm opacity-90">Total Amount</p>
                   <p className="text-2xl sm:text-3xl font-bold">₹{totalAmount.toLocaleString()}</p>
                   <p className="text-sm opacity-90 mt-1">
-                    {formData.delegate_count} delegate(s) × ₹1,050 each
+                    {formData.delegate_count} delegate(s) registration
                   </p>
                 </div>
                 <button
