@@ -271,7 +271,7 @@ const RegistrationForm: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8">
           <div className="text-center mb-6 sm:mb-8">
             <img src="/rotary-logo.png" alt="Rotary International" className="h-16 sm:h-20 mx-auto mb-4" />
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary District 3206 - District Learning Assembly</h1>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary District 3206 <br /> District Learning Assembly</h1>
             <p className="text-sm sm:text-base text-gray-600">Register your delegates for the event</p>
             <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 24 May 2026 | <b>Venue:</b> SNS Academy, Saravanampatti, Coimbatore</p>
             {registrationClosed && (
@@ -288,54 +288,21 @@ const RegistrationForm: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Number of Delegates <span className="text-red-500">*</span>
+                    Name <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="delegate_count"
-                    value={formData.delegate_count}
-                    onChange={handleDelegateCountChange}
-                    className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
-                      errors.delegate_count ? 'border-red-500' : 'border-gray-300'
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      errors.name ? 'border-red-500' : 'border-gray-300'
                     }`}
-                  >
-                    {Array.from({ length: 23 }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num}>
-                        {num} Delegate{num > 1 ? 's' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.delegate_count && (
-                    <p className="text-red-500 text-sm mt-1">{errors.delegate_count}</p>
+                    placeholder="Your name"
+                  />
+                  {errors.name && (
+                    <p className="text-red-500 text-sm mt-1">{errors.name}</p>
                   )}
-                  
-                  {/* Pricing Calculation Display */}
-                  <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Pricing Calculation:</p>
-                    <div className="text-xs text-gray-600 space-y-1">
-                      {(() => {
-                        const count = formData.delegate_count;
-                        let pricing = '';
-                        if (count === 23) {
-                          pricing = '23 Delegates: ₹20,000 (Special Package)';
-                        } else if (count >= 19 && count <= 22) {
-                          const base = 17500;
-                          const additional = (count - 18) * 1200;
-                          pricing = `18 Delegates: ₹17,500 + ${(count - 18)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
-                        } else if (count === 18) {
-                          pricing = '18 Delegates: ₹17,500 (Special Package)';
-                        } else if (count >= 13 && count <= 17) {
-                          const base = 13500;
-                          const additional = (count - 12) * 1200;
-                          pricing = `12 Delegates: ₹13,500 + ${(count - 12)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
-                        } else if (count === 12) {
-                          pricing = '12 Delegates: ₹13,500 (Special Package)';
-                        } else {
-                          pricing = `${count} Delegates × ₹1,200 = ₹${(count * 1200).toLocaleString()}`;
-                        }
-                        return <p>{pricing}</p>;
-                      })()}
-                    </div>
-                  </div>
                 </div>
 
                 <div>
@@ -407,26 +374,65 @@ const RegistrationForm: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 space-y-2 sm:space-y-0">
-                <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Delegate Details</h2>
-                <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                  <label className="text-sm font-medium text-gray-700">Number of Delegates:</label>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6 mb-6">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Delegate Details & Pricing</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Number of Delegates <span className="text-red-500">*</span>
+                  </label>
                   <select
+                    name="delegate_count"
                     value={formData.delegate_count}
                     onChange={handleDelegateCountChange}
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
+                      errors.delegate_count ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   >
-                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                    {Array.from({ length: 23 }, (_, i) => i + 1).map((num) => (
                       <option key={num} value={num}>
-                        {num}
+                        {num} Delegate{num > 1 ? 's' : ''}
                       </option>
                     ))}
                   </select>
+                  {errors.delegate_count && (
+                    <p className="text-red-500 text-sm mt-1">{errors.delegate_count}</p>
+                  )}
+                </div>
+
+                <div>
+                  {/* Pricing Calculation Display */}
+                  <div className="p-4 bg-green-100 rounded-lg border border-green-300">
+                    <p className="text-sm font-medium text-gray-700 mb-2">Pricing Calculation:</p>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      {(() => {
+                        const count = formData.delegate_count;
+                        let pricing = '';
+                        if (count === 23) {
+                          pricing = '23 Delegates: ₹20,000 (Special Package)';
+                        } else if (count >= 19 && count <= 22) {
+                          const base = 17500;
+                          const additional = (count - 18) * 1200;
+                          pricing = `18 Delegates: ₹17,500 + ${(count - 18)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
+                        } else if (count === 18) {
+                          pricing = '18 Delegates: ₹17,500 (Special Package)';
+                        } else if (count >= 13 && count <= 17) {
+                          const base = 13500;
+                          const additional = (count - 12) * 1200;
+                          pricing = `12 Delegates: ₹13,500 + ${(count - 12)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
+                        } else if (count === 12) {
+                          pricing = '12 Delegates: ₹13,500 (Special Package)';
+                        } else {
+                          pricing = `${count} Delegates × ₹1,200 = ₹${(count * 1200).toLocaleString()}`;
+                        }
+                        return <p>{pricing}</p>;
+                      })()}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-                          </div>
+            </div>
 
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
