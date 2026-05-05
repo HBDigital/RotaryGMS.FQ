@@ -141,6 +141,21 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleExportRecentTransactionsExcel = async () => {
+    try {
+      const blob = await fetch(`${API_URL}/admin/export-recent-transactions-excel`).then(r => r.blob());
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GMS2026_Recent_Transactions_${Date.now()}.xlsx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error exporting recent transactions Excel:', error);
+      alert('Failed to export Excel file');
+    }
+  };
+
   interface DistrictClub {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
     participation_closed?: boolean;
@@ -653,6 +668,15 @@ const AdminDashboard: React.FC = () => {
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-semibold text-gray-900">Recent Transactions</h2>
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleExportRecentTransactionsExcel}
+                      className="flex items-center space-x-2 bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      <span>Export Excel</span>
+                    </button>
                     <span className="text-xs text-gray-400 flex items-center gap-1">
                       <span className="inline-block w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
                       Refresh in {String(Math.floor(countdown / 60)).padStart(2, '0')}:{String(countdown % 60).padStart(2, '0')}

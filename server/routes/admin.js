@@ -303,6 +303,143 @@ router.get('/admin/transactions', async (req, res) => {
   }
 });
 
+router.get('/admin/export-recent-transactions-excel', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100; // Default to 100 for export
+    const offset = (page - 1) * limit;
+
+    const transactions = await db.prepare(`
+      SELECT 
+        r.id, r.name, r.email, r.phone, r.club_name, r.delegate_count, r.total_amount,
+        r.payment_status, r.receipt_no, r.razorpay_order_id, r.razorpay_payment_id,
+        r.email_status, r.whatsapp_status, r.created_at, r.payment_mode, r.payment_reference
+      FROM registrations r
+      WHERE r.payment_status = 'success'
+      ORDER BY r.created_at DESC
+      LIMIT ? OFFSET ?
+    `).all(limit, offset);
+
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Recent Transactions');
+
+    // Add headers
+    const headers = [
+      'Receipt No',
+      'Name',
+      'Email',
+      'Phone',
+      'Club Name',
+      'Delegate Count',
+      'Amount (₹)',
+      'Payment Mode',
+      'Payment Status',
+      'Email Status',
+      'WhatsApp Status',
+      'Registration Date',
+      'Payment ID',
+      'Order ID'
+    ];
+    
+    sheet.addRow(headers);
+
+    // Style headers
+    sheet.getRow(1).eachCell((cell) => {
+      cell.font = { bold: true };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFE0E0E0' }
+      };
+      cell.border = {
+        top: { style: 'thin' },
+        left: { style: 'thin' },
+        bottom: { style: 'thin' },
+        right: { style: 'thin' }
+      };
+    });
+
+    // Add data rows
+    transactions.forEach(transaction => {
+      sheet.addRow([
+        transaction.receipt_no || '',
+        transaction.name || '',
+        transaction.email || '',
+        transaction.phone || '',
+        transaction.club_name || '',
+        transaction.delegate_count || 0,
+        transaction.total_amount || 0,
+        transaction.payment_mode || 'online',
+        transaction.payment_status || '',
+        transaction.email_status || '',
+        transaction.whatsapp_status || '',
+        transaction.created_at || '',
+        transaction.razorpay_payment_id || '',
+        transaction.razorpay_order_id || ''
+      ]);
+    });
+
+    // Set column widths
+    sheet.columns = [
+      { width: 15 }, // Receipt No
+      { width: 25 }, // Name
+      { width: 30 }, // Email
+      { width: 15 }, // Phone
+      { width: 25 }, // Club Name
+      { width: 12 }, // Delegate Count
+      { width: 12 }, // Amount
+      { width: 12 }, // Payment Mode
+      { width: 12 }, // Payment Status
+      { width: 12 }, // Email Status
+      { width: 12 }, // WhatsApp Status
+      { width: 20 }, // Registration Date
+      { width: 25 }, // Payment ID
+      { width: 25 }  // Order ID
+    ];
+
+    // Format amount column as currency
+    sheet.getColumn('G').numFmt = '"₹"#,##0.00';
+
+    // Add summary row at the bottom
+    const summaryRow = sheet.addRow([]);
+    summaryRow.commit();
+    
+    const totalAmount = transactions.reduce((sum, tx) => sum + (tx.total_amount || 0), 0);
+    const summaryDataRow = sheet.addRow([
+      'TOTAL',
+      `${transactions.length} Transactions`,
+      '',
+      '',
+      '',
+      '',
+      totalAmount,
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      '',
+      ''
+    ]);
+    
+    summaryDataRow.font = { bold: true };
+    summaryDataRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0FFE0' }
+    };
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_Recent_Transactions_${Date.now()}.xlsx`);
+    res.send(Buffer.from(buffer));
+  } catch (error) {
+    console.error('Error exporting recent transactions Excel:', error);
+    res.status(500).json({ error: 'Failed to export recent transactions' });
+  }
+});
+
 router.get('/admin/registrations', async (req, res) => {
   try {
     const registrations = await db.prepare(`
