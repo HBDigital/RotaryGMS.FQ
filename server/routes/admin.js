@@ -305,10 +305,6 @@ router.get('/admin/transactions', async (req, res) => {
 
 router.get('/admin/export-recent-transactions-excel', async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 100; // Default to 100 for export
-    const offset = (page - 1) * limit;
-
     const transactions = await db.prepare(`
       SELECT 
         r.id, r.name, r.email, r.phone, r.club_name, r.delegate_count, r.total_amount,
@@ -317,8 +313,7 @@ router.get('/admin/export-recent-transactions-excel', async (req, res) => {
       FROM registrations r
       WHERE r.payment_status = 'success'
       ORDER BY r.created_at DESC
-      LIMIT ? OFFSET ?
-    `).all(limit, offset);
+    `).all();
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Recent Transactions');
