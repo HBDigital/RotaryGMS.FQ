@@ -282,7 +282,8 @@ const RegistrationForm: React.FC = () => {
             <img src="/rotary-logo.png" alt="Rotary International" className="h-16 sm:h-20 mx-auto mb-4" />
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">Rotary District 3206 <br /> District Learning Assembly</h1>
             <p className="text-sm sm:text-base text-gray-600">Register your delegates for the event</p>
-            <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 24 May 2026 | <b>Venue:</b> SNS Academy, Saravanampatti, Coimbatore</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Date:</b> 24 May 2026 | <b>Venue:</b> KPR College of Arts Science and Research, Coimbatore</p>
+            <p className="text-xs sm:text-sm text-gray-600 mt-2"><b>Google Map Link:</b> <a href="https://share.google/bOskrewX72xznhLSc" target="_blank" rel="noopener noreferrer">KPR College of Arts Science</a></p>
             {registrationClosed && (
               <div className="mt-4 inline-block bg-red-50 text-red-700 border border-red-200 rounded-lg px-4 py-2 text-sm font-medium">
                 Registrations are closed from {registrationCloseDate} (IST)
