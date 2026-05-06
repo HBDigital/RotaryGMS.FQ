@@ -35,7 +35,7 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
               { type: 'text', text: name },
               { type: 'text', text: receipt_no },
               { type: 'text', text: club_name },
-              { type: 'text', text: `${delegate_count} delegate(s), Rs.${total_amount.toLocaleString()} collected` },
+              { type: 'text', text: `${delegate_count} delegate(s),Total Rs.${total_amount.toLocaleString()} collected` },
               { type: 'text', text: 'RCC Heritage' },
             ],
           },
