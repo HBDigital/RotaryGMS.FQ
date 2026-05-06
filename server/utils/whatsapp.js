@@ -149,4 +149,69 @@ async function sendWhatsAppAGReminder({ agName, agPhone, pendingClubs }) {
   }
 }
 
-module.exports = { sendWhatsAppReceipt, sendWhatsAppAGReminder, sendWhatsAppCustomMessage };
+async function sendWhatsAppTemplate({ phone, name, template, imageUrl }) {
+  try {
+    const token = process.env.ASKEVA_API_KEY;
+    if (!token || token === 'YOUR_ASKEVA_API_KEY_HERE') {
+      console.warn('⚠️ Askeva WhatsApp API not configured');
+      return { success: false };
+    }
+
+    const cleanPhone = phone.replace(/\D/g, '');
+    const intlPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+
+    // Build payload based on template
+    // dla_reminder: {{1}} = name, {{2}} = RCC Heritage
+    // dla_event: {{1}} = name, {{2}} = RCC Heritage
+    const components = [];
+
+    // Add header image if provided
+    if (imageUrl) {
+      components.push({
+        type: 'header',
+        parameters: [
+          { type: 'image', image: { link: imageUrl } },
+        ],
+      });
+    }
+
+    // Add body parameters
+    components.push({
+      type: 'body',
+      parameters: [
+        { type: 'text', text: name },
+        { type: 'text', text: 'RCC Heritage' },
+      ],
+    });
+
+    const payload = {
+      to: intlPhone,
+      type: 'template',
+      template: {
+        language: { policy: 'deterministic', code: 'en' },
+        name: template, // 'dla_reminder' or 'dla_event'
+        components,
+      },
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(`${ASKEVA_BASE_URL}?token=${token}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    const data = await response.json();
+    console.log(`✅ WhatsApp template ${template} sent to ${intlPhone}`, data);
+    return { success: true, data };
+  } catch (error) {
+    console.error(`❌ Failed to send WhatsApp template:`, error.message);
+    return { success: false };
+  }
+}
+
+module.exports = { sendWhatsAppReceipt, sendWhatsAppAGReminder, sendWhatsAppCustomMessage, sendWhatsAppTemplate };

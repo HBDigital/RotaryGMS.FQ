@@ -1,8 +1,53 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../database');
-const { sendWhatsAppCustomMessage } = require('../utils/whatsapp');
+const { sendWhatsAppCustomMessage, sendWhatsAppTemplate } = require('../utils/whatsapp');
 const nodemailer = require('nodemailer');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Configure multer for image uploads
+const uploadDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'wa-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowed = /jpeg|jpg|png|gif|webp/;
+    const extOk = allowed.test(path.extname(file.originalname).toLowerCase());
+    const mimeOk = allowed.test(file.mimetype);
+    if (extOk && mimeOk) cb(null, true);
+    else cb(new Error('Only image files allowed'));
+  }
+});
+
+// Upload image for WhatsApp
+router.post('/admin/upload-image', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+    // Return public URL
+    const baseUrl = process.env.BASE_URL || 'https://dla.feequick.com';
+    const url = `${baseUrl}/uploads/${req.file.filename}`;
+    res.status(200).json({ success: true, url, filename: req.file.filename });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Failed to upload image' });
+  }
+});
 
 // Get all district contacts
 router.get('/admin/contacts', async (req, res) => {
@@ -140,11 +185,52 @@ router.post('/admin/contacts/:id/whatsapp', async (req, res) => {
   }
 });
 
+// Send WhatsApp template to contact
+router.post('/admin/contacts/:id/whatsapp-template', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { template, imageUrl } = req.body;
+
+    if (!template || !['dla_reminder', 'dla_event'].includes(template)) {
+      return res.status(400).json({ error: 'Invalid template. Use dla_reminder or dla_event' });
+    }
+
+    const contact = await db.prepare(`SELECT * FROM district_contacts WHERE id = ?`).get(id);
+    if (!contact) {
+      return res.status(404).json({ error: 'Contact not found' });
+    }
+
+    if (!contact.phone) {
+      return res.status(400).json({ error: 'Contact has no phone number' });
+    }
+
+    const result = await sendWhatsAppTemplate({
+      phone: contact.phone,
+      name: contact.name,
+      template,
+      imageUrl,
+    });
+
+    if (result.success) {
+      await db.prepare(
+        `INSERT INTO message_cost (message_type, recipient, cost) VALUES (?, ?, ?)`
+      ).run('whatsapp', contact.phone, 1.0);
+
+      res.status(200).json({ success: true, message: 'WhatsApp template sent successfully' });
+    } else {
+      res.status(500).json({ error: 'Failed to send WhatsApp template' });
+    }
+  } catch (error) {
+    console.error('Error sending WhatsApp template:', error);
+    res.status(500).json({ error: 'Failed to send WhatsApp template' });
+  }
+});
+
 // Send email to contact
 router.post('/admin/contacts/:id/email', async (req, res) => {
   try {
     const { id } = req.params;
-    const { subject, message } = req.body;
+    const { subject, message, isHtml } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'message is required' });
@@ -160,33 +246,45 @@ router.post('/admin/contacts/:id/email', async (req, res) => {
     }
 
     const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: process.env.SMTP_PORT || 587,
+      host: process.env.SMTP_HOST || 'smtp.zeptomail.in',
+      port: parseInt(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
-        user: process.env.SMTP_USER,
+        user: process.env.SMTP_USER || 'emailapikey',
         pass: process.env.SMTP_PASS,
       },
+      tls: { rejectUnauthorized: false },
     });
 
-    const html = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #1e40af; padding: 24px; text-align: center;">
-          <h1 style="color: white; margin: 0;">Rotary District 3206 - District Learning Assembly</h1>
+    let html;
+    let text;
+
+    if (isHtml) {
+      // User provided raw HTML
+      html = message;
+      text = message.replace(/<[^>]*>/g, ''); // Strip HTML for plain text version
+    } else {
+      // Wrap plain text in standard template
+      html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1e40af; padding: 24px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 18px;">Rotary District 3206 - District Learning Assembly</h1>
+          </div>
+          <div style="padding: 24px;">
+            <div style="line-height: 1.6; margin-bottom: 16px;">${message.replace(/\n/g, '<br>')}</div>
+            <p style="margin: 16px 0 0; color: #666;">Best regards,<br>Rotary District 3206</p>
+          </div>
         </div>
-        <div style="padding: 24px;">
-          <p style="margin: 0 0 16px;">Dear ${contact.name},</p>
-          <div style="line-height: 1.6; margin-bottom: 16px;">${message.replace(/\n/g, '<br>')}</div>
-          <p style="margin: 16px 0 0; color: #666;">Best regards,<br>Rotary District 3206</p>
-        </div>
-      </div>
-    `;
+      `;
+      text = message;
+    }
 
     await transporter.sendMail({
-      from: `"${process.env.FROM_NAME || 'Rotary 3206 DLA 2026'}" <${process.env.FROM_EMAIL || process.env.SMTP_USER}>`,
+      from: '"Rotary 3206" <rotary3206_dla@feequick.com>',
       to: contact.email,
       subject: subject || 'District Learning Assembly',
       html,
+      text,
     });
 
     // Log cost

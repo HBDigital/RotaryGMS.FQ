@@ -22,7 +22,42 @@ interface DistrictContactsProps {
   userRole?: string;
 }
 
-const TEMPLATES = [
+const WHATSAPP_TEMPLATES = [
+  {
+    id: 'dla_reminder',
+    label: 'Registration Reminder',
+    preview: `Dear {name},
+
+This is a reminder to register your clubs for the District Learning Assembly 2026.
+
+Event Details:
+Date: 24 May 2026
+Venue: KPR College of Arts Science and Research, Coimbatore
+
+Please complete your registration at the earliest.
+
+Regards,
+RCC Heritage - Rotary District 3206`,
+  },
+  {
+    id: 'dla_event',
+    label: 'Event Details',
+    preview: `Dear {name},
+
+District Learning Assembly 2026 registrations are now open.
+
+Date: 24 May 2026
+Venue: KPR College of Arts Science and Research, Coimbatore
+Location Map: https://share.google/bOskrewX72xznhLSc
+Registration Link: dla.feequick.com
+
+Kindly share this information with your club delegates and encourage them to complete registration at the earliest.
+
+RCC Heritage - Rotary District 3206`,
+  },
+];
+
+const EMAIL_TEMPLATES = [
   {
     id: 'registration_reminder',
     label: 'Registration Reminder',
@@ -39,19 +74,7 @@ Please complete your registration at the earliest.
 
 Regards,
 Rotary District 3206`,
-  },
-  {
-    id: 'payment_reminder',
-    label: 'Payment Pending Reminder',
-    subject: 'Action Required - Complete Your DLA Registration Payment',
-    body: `Dear {name},
-
-Your registration for the District Learning Assembly 2026 is pending payment. Please complete the payment to confirm your delegates.
-
-Visit: https://dla.feequick.com to complete registration.
-
-Regards,
-Rotary District 3206`,
+    isHtml: false,
   },
   {
     id: 'event_details',
@@ -59,37 +82,25 @@ Rotary District 3206`,
     subject: 'District Learning Assembly 2026 - Event Details',
     body: `Dear {name},
 
-We are pleased to share the details for the upcoming District Learning Assembly 2026.
+District Learning Assembly 2026 registrations are now open.
 
 Date: 24 May 2026
 Venue: KPR College of Arts Science and Research, Coimbatore
 Map: https://share.google/bOskrewX72xznhLSc
+Registration: https://dla.feequick.com
 
 Please ensure all your club delegates are informed.
 
 Regards,
 Rotary District 3206`,
-  },
-  {
-    id: 'welcome',
-    label: 'Welcome & Thank You',
-    subject: 'Thank You for Registering - DLA 2026',
-    body: `Dear {name},
-
-Thank you for registering for the District Learning Assembly 2026. We look forward to a productive and enriching session.
-
-Please carry your receipt number for on-site verification.
-
-See you on 24 May 2026!
-
-Regards,
-Rotary District 3206`,
+    isHtml: false,
   },
   {
     id: 'custom',
     label: 'Custom Message',
     subject: '',
     body: '',
+    isHtml: false,
   },
 ];
 
@@ -104,9 +115,13 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
   const [messageCosts, setMessageCosts] = useState<MessageCosts | null>(null);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [bulkChannel, setBulkChannel] = useState<'whatsapp' | 'email'>('whatsapp');
-  const [selectedTemplate, setSelectedTemplate] = useState(TEMPLATES[0].id);
-  const [messageSubject, setMessageSubject] = useState(TEMPLATES[0].subject);
-  const [messageBody, setMessageBody] = useState(TEMPLATES[0].body);
+  const [selectedWaTemplate, setSelectedWaTemplate] = useState(WHATSAPP_TEMPLATES[0].id);
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState(EMAIL_TEMPLATES[0].id);
+  const [messageSubject, setMessageSubject] = useState(EMAIL_TEMPLATES[0].subject);
+  const [messageBody, setMessageBody] = useState(EMAIL_TEMPLATES[0].body);
+  const [isHtmlEmail, setIsHtmlEmail] = useState(false);
+  const [waImage, setWaImage] = useState<File | null>(null);
+  const [waImagePreview, setWaImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [sendProgress, setSendProgress] = useState('');
 
@@ -186,35 +201,82 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
     }
   };
 
-  const handleTemplateChange = (templateId: string) => {
-    setSelectedTemplate(templateId);
-    const t = TEMPLATES.find(t => t.id === templateId);
-    if (t) { setMessageSubject(t.subject); setMessageBody(t.body); }
+  const handleEmailTemplateChange = (templateId: string) => {
+    setSelectedEmailTemplate(templateId);
+    const t = EMAIL_TEMPLATES.find(t => t.id === templateId);
+    if (t) { setMessageSubject(t.subject); setMessageBody(t.body); setIsHtmlEmail(t.isHtml); }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setWaImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setWaImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleBulkSend = async () => {
     const targets = filteredContacts.filter(c => selectedIds.has(c.id));
     if (targets.length === 0) return;
-    if (!messageBody.trim()) { alert('Message body is required'); return; }
+    
+    if (bulkChannel === 'email' && !messageBody.trim()) { 
+      alert('Message body is required'); 
+      return; 
+    }
+    
     if (!window.confirm(`Send ${bulkChannel} to ${targets.length} contacts?`)) return;
 
     setSending(true);
     let sent = 0; let failed = 0;
 
-    for (const contact of targets) {
-      const personalizedBody = messageBody.replace(/{name}/g, contact.name).replace(/{club}/g, contact.club_name);
+    // For WhatsApp, upload image first if provided
+    let imageUrl: string | null = null;
+    if (bulkChannel === 'whatsapp' && waImage) {
       try {
-        const endpoint = bulkChannel === 'whatsapp'
-          ? `${API_URL}/admin/contacts/${contact.id}/whatsapp`
-          : `${API_URL}/admin/contacts/${contact.id}/email`;
-        const body = bulkChannel === 'whatsapp'
-          ? { message: personalizedBody }
-          : { subject: messageSubject, message: personalizedBody };
-        const res = await fetch(endpoint, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        const formData = new FormData();
+        formData.append('image', waImage);
+        const uploadRes = await fetch(`${API_URL}/admin/upload-image`, {
+          method: 'POST',
+          body: formData,
         });
-        const data = await res.json();
-        if (data.success) sent++; else failed++;
+        const uploadData = await uploadRes.json();
+        if (uploadData.success) {
+          imageUrl = uploadData.url;
+        }
+      } catch (e) {
+        console.error('Image upload failed:', e);
+      }
+    }
+
+    for (const contact of targets) {
+      try {
+        if (bulkChannel === 'whatsapp') {
+          const res = await fetch(`${API_URL}/admin/contacts/${contact.id}/whatsapp-template`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              template: selectedWaTemplate,
+              imageUrl,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) sent++; else failed++;
+        } else {
+          const personalizedBody = messageBody.replace(/{name}/g, contact.name).replace(/{club}/g, contact.club_name);
+          const res = await fetch(`${API_URL}/admin/contacts/${contact.id}/email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              subject: messageSubject, 
+              message: personalizedBody,
+              isHtml: isHtmlEmail,
+            }),
+          });
+          const data = await res.json();
+          if (data.success) sent++; else failed++;
+        }
       } catch { failed++; }
       setSendProgress(`Sending... ${sent + failed}/${targets.length}`);
     }
@@ -225,6 +287,8 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
     alert(`Done! Sent: ${sent}, Failed: ${failed}`);
     setBulkModalOpen(false);
     setSelectedIds(new Set());
+    setWaImage(null);
+    setWaImagePreview(null);
   };
 
   const zones = ['All', ...Array.from(new Set(contacts.map(c => c.zone))).filter(Boolean).sort()];
@@ -346,7 +410,7 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
       {/* Bulk Message Modal */}
       {bulkModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl w-full max-w-2xl p-6 shadow-xl">
+          <div className="bg-white rounded-xl w-full max-w-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
                 Send {bulkChannel === 'whatsapp' ? 'WhatsApp' : 'Email'} to {selectedIds.size} contacts
@@ -363,50 +427,122 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
               </div>
             </div>
 
-            {/* Template Selector */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Message Template</label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {TEMPLATES.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleTemplateChange(t.id)}
-                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
-                      selectedTemplate === t.id
-                        ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-200 hover:border-gray-400 text-gray-700'
-                    }`}
-                  >
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* WhatsApp Templates */}
+            {bulkChannel === 'whatsapp' && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {WHATSAPP_TEMPLATES.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => setSelectedWaTemplate(t.id)}
+                        className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                          selectedWaTemplate === t.id
+                            ? 'border-green-500 bg-green-50 text-green-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-400 text-gray-700'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {/* Subject (email only) */}
-            {bulkChannel === 'email' && (
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
-                <input
-                  type="text" value={messageSubject} onChange={(e) => setMessageSubject(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Email subject..."
-                />
-              </div>
+                {/* Template Preview */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Template Preview</label>
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm text-gray-600 whitespace-pre-wrap font-mono">
+                    {WHATSAPP_TEMPLATES.find(t => t.id === selectedWaTemplate)?.preview.replace(/{name}/g, '[Contact Name]')}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">Template text cannot be edited. Name will be personalised for each contact.</p>
+                </div>
+
+                {/* Image Upload */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Upload Image (Optional)</label>
+                  <div className="flex items-start gap-4">
+                    <div className="flex-1">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">JPG, PNG up to 5MB. Image will be sent with the template.</p>
+                    </div>
+                    {waImagePreview && (
+                      <div className="relative">
+                        <img src={waImagePreview} alt="Preview" className="w-20 h-20 object-cover rounded-lg border" />
+                        <button
+                          onClick={() => { setWaImage(null); setWaImagePreview(null); }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs flex items-center justify-center"
+                        >×</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </>
             )}
 
-            {/* Message Body */}
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Message <span className="text-xs text-gray-400">(use {'{name}'} and {'{club}'} for personalisation)</span>
-              </label>
-              <textarea
-                value={messageBody} onChange={(e) => setMessageBody(e.target.value)}
-                rows={7}
-                className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 font-mono"
-                placeholder="Enter your message..."
-              />
-            </div>
+            {/* Email Templates */}
+            {bulkChannel === 'email' && (
+              <>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Template</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {EMAIL_TEMPLATES.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => handleEmailTemplateChange(t.id)}
+                        className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                          selectedEmailTemplate === t.id
+                            ? 'border-blue-500 bg-blue-50 text-blue-700 font-medium'
+                            : 'border-gray-200 hover:border-gray-400 text-gray-700'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* HTML Toggle */}
+                <div className="mb-3 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="htmlEmail"
+                    checked={isHtmlEmail}
+                    onChange={(e) => setIsHtmlEmail(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600"
+                  />
+                  <label htmlFor="htmlEmail" className="text-sm text-gray-700">Send as HTML email</label>
+                </div>
+
+                {/* Subject */}
+                <div className="mb-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
+                  <input
+                    type="text" value={messageSubject} onChange={(e) => setMessageSubject(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                    placeholder="Email subject..."
+                  />
+                </div>
+
+                {/* Message Body */}
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {isHtmlEmail ? 'HTML Content' : 'Message'} <span className="text-xs text-gray-400">(use {'{name}'} and {'{club}'} for personalisation)</span>
+                  </label>
+                  <textarea
+                    value={messageBody} onChange={(e) => setMessageBody(e.target.value)}
+                    rows={8}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 ${isHtmlEmail ? 'font-mono text-xs' : ''}`}
+                    placeholder={isHtmlEmail ? '<html>...</html>' : 'Enter your message...'}
+                  />
+                </div>
+              </>
+            )}
 
             {sendProgress && (
               <p className="text-sm text-blue-600 mb-3 font-medium">{sendProgress}</p>
@@ -414,13 +550,13 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
 
             <div className="flex justify-end gap-3">
               <button
-                onClick={() => { setBulkModalOpen(false); setSendProgress(''); }}
+                onClick={() => { setBulkModalOpen(false); setSendProgress(''); setWaImage(null); setWaImagePreview(null); }}
                 disabled={sending}
                 className="px-4 py-2 border rounded-lg text-sm hover:bg-gray-100 disabled:opacity-50"
               >Cancel</button>
               <button
                 onClick={handleBulkSend}
-                disabled={sending || !messageBody.trim()}
+                disabled={sending || (bulkChannel === 'email' && !messageBody.trim())}
                 className={`px-5 py-2 rounded-lg text-sm font-medium text-white disabled:opacity-50 ${
                   bulkChannel === 'whatsapp' ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
                 }`}
