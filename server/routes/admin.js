@@ -1152,4 +1152,62 @@ router.post('/admin/registrations/update-cost-by-details', async (req, res) => {
   }
 });
 
+// Resend email and WhatsApp notifications for a registration
+router.post('/admin/registrations/:id/resend-notifications', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const registration = await db.prepare(`
+      SELECT * FROM registrations WHERE id = ? AND payment_status = 'success'
+    `).get(id);
+
+    if (!registration) {
+      return res.status(404).json({ error: 'Successful registration not found' });
+    }
+
+    const results = { email: false, whatsapp: false };
+
+    // Resend email
+    try {
+      await sendReceiptEmail({
+        name: registration.name,
+        email: registration.email,
+        receipt_no: registration.receipt_no,
+        club_name: registration.club_name,
+        delegate_count: registration.delegate_count,
+        total_amount: registration.total_amount,
+      });
+      results.email = true;
+      await db.prepare(`UPDATE registrations SET email_status = 'sent' WHERE id = ?`).run(id);
+    } catch (emailError) {
+      console.error('Error resending email:', emailError);
+    }
+
+    // Resend WhatsApp
+    try {
+      await sendWhatsAppReceipt({
+        name: registration.name,
+        phone: registration.phone,
+        receipt_no: registration.receipt_no,
+        club_name: registration.club_name,
+        delegate_count: registration.delegate_count,
+        total_amount: registration.total_amount,
+      });
+      results.whatsapp = true;
+      await db.prepare(`UPDATE registrations SET whatsapp_status = 'sent' WHERE id = ?`).run(id);
+    } catch (whatsappError) {
+      console.error('Error resending WhatsApp:', whatsappError);
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      message: `Notifications resent - Email: ${results.email ? 'sent' : 'failed'}, WhatsApp: ${results.whatsapp ? 'sent' : 'failed'}`,
+      results 
+    });
+  } catch (error) {
+    console.error('Error resending notifications:', error);
+    res.status(500).json({ error: 'Failed to resend notifications' });
+  }
+});
+
 module.exports = router;
