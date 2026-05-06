@@ -18,7 +18,11 @@ interface MessageCosts {
   total: { count: number; cost: number };
 }
 
-const DistrictContacts: React.FC = () => {
+interface DistrictContactsProps {
+  userRole?: string;
+}
+
+const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -272,12 +276,14 @@ const DistrictContacts: React.FC = () => {
                 </div>
               </div>
             </div>
-            <button
-              onClick={handleResetCosts}
-              className="text-sm text-red-600 hover:text-red-800 underline"
-            >
-              Reset Counter
-            </button>
+            {userRole === 'super_admin' && (
+              <button
+                onClick={handleResetCosts}
+                className="text-sm text-red-600 hover:text-red-800 underline"
+              >
+                Reset Counter
+              </button>
+            )}
           </div>
         </div>
       )}

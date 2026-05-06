@@ -195,6 +195,7 @@ const AdminDashboard: React.FC = () => {
   const [reconcileResult, setReconcileResult] = useState<{ reconciled: {name:string;receipt_no:string}[]; failed: {name:string;reason:string}[]; total_checked: number } | null>(null);
 
   const isViewer = sessionStorage.getItem('adminRole') === 'viewer';
+  const userRole = sessionStorage.getItem('adminRole') || 'admin';
   const formatISTDateTime = (value: string) => {
     const normalized = String(value || '').trim().replace(' ', 'T');
     const utcValue = normalized.endsWith('Z') ? normalized : `${normalized}Z`;
@@ -1155,7 +1156,7 @@ const AdminDashboard: React.FC = () => {
               </div>
             )}
 
-            {activeTab === 'contacts' && <DistrictContacts />}
+            {activeTab === 'contacts' && <DistrictContacts userRole={userRole} />}
 
             {activeTab === 'settings' && !isViewer && (
               <div>

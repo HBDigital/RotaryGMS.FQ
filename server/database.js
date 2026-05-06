@@ -164,7 +164,7 @@ async function initDatabase() {
     console.log('✅ Database migrations applied');
 
     const adminUsers = [
-      [process.env.ADMIN_USERNAME || 'vivek', process.env.ADMIN_PASSWORD || 'vivek', 'admin'],
+      [process.env.ADMIN_USERNAME || 'vivek', process.env.ADMIN_PASSWORD || 'vivek', 'super_admin'],
       [process.env.VIEWER_USERNAME || 'rid3206', process.env.VIEWER_PASSWORD || 'rid3206', 'viewer'],
       ['ganesh', 'heritage', 'admin'],
     ];
