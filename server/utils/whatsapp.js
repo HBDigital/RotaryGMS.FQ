@@ -14,10 +14,11 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
     const intlPhone = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
 
     // Template variables:
-    // {{1}} = name
-    // {{2}} = receipt_no
-    // {{3}} = club name
-    // {{4}} = delegates count + amount
+    // {{1}} = Name of person registering
+    // {{2}} = Receipt No
+    // {{3}} = Club name
+    // {{4}} = Number of delegates + total amount
+    // {{5}} = Static - RCC Heritage (host club)
     const payload = {
       to: intlPhone,
       type: 'template',
@@ -35,6 +36,7 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
               { type: 'text', text: receipt_no },
               { type: 'text', text: club_name },
               { type: 'text', text: `${delegate_count} delegate(s), Rs.${total_amount.toLocaleString()} collected` },
+              { type: 'text', text: 'RCC Heritage' },
             ],
           },
         ],

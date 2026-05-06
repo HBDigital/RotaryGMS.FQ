@@ -15,6 +15,8 @@ const transporter = nodemailer.createTransport({
 
 async function sendReceiptEmail({ name, email, phone, club_name, delegate_count, total_amount, receipt_no, payment_id }) {
   try {
+    // Replace Manchester with Heritage in club name for display
+    const displayClubName = club_name.replace(/Manchester/gi, 'Heritage');
 
     const html = `
       <!DOCTYPE html>
@@ -49,7 +51,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
               <tr><td style="padding:8px 0;color:#6b7280;width:40%;">Name</td><td style="padding:8px 0;color:#1f2937;font-weight:600;">${name}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;">Email</td><td style="padding:8px 0;color:#1f2937;">${email}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;">Phone</td><td style="padding:8px 0;color:#1f2937;">${phone}</td></tr>
-              <tr><td style="padding:8px 0;color:#6b7280;">Club</td><td style="padding:8px 0;color:#1f2937;font-weight:600;">${club_name}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;">Club</td><td style="padding:8px 0;color:#1f2937;font-weight:600;">${displayClubName}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;">Delegates</td><td style="padding:8px 0;color:#1f2937;">${delegate_count}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;">Amount Paid</td><td style="padding:8px 0;color:#16a34a;font-weight:700;">₹${total_amount.toLocaleString()}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;">Payment ID</td><td style="padding:8px 0;color:#1f2937;font-size:12px;font-family:monospace;">${payment_id}</td></tr>
