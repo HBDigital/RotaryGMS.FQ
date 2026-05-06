@@ -121,6 +121,18 @@ async function initDatabase() {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS district_contacts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        club_name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        role TEXT NOT NULL,
+        zone TEXT NOT NULL,
+        active INTEGER DEFAULT 1,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_registration_id ON transactions(registration_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(razorpay_order_id);
     `;

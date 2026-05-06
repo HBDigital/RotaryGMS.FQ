@@ -4,6 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const registrationRoutes = require('./routes/registrations');
 const adminRoutes = require('./routes/admin');
+const contactsRoutes = require('./routes/contacts');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,6 +32,7 @@ app.use((req, res, next) => {
 
 app.use('/api', registrationRoutes);
 app.use('/api', adminRoutes);
+app.use('/api', contactsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });

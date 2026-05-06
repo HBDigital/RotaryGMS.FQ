@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import DistrictContacts from './DistrictContacts';
 
 interface Summary {
   totalRegistrations: number;
@@ -85,7 +86,7 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district' | 'contacts' | 'settings'>('overview');
   const [registrationCloseDate, setRegistrationCloseDate] = useState('2026-05-03');
   const [newCloseDate, setNewCloseDate] = useState('2026-05-03');
   const [savingSettings, setSavingSettings] = useState(false);
@@ -638,7 +639,7 @@ const AdminDashboard: React.FC = () => {
                 Designation Report
               </button>
               <button
-                onClick={() => { setActiveTab('district'); fetchDistrictReport(); }}
+                onClick={() => setActiveTab('district')}
                 className={`px-6 py-4 text-sm font-medium ${
                   activeTab === 'district'
                     ? 'border-b-2 border-blue-500 text-blue-600'
@@ -646,6 +647,16 @@ const AdminDashboard: React.FC = () => {
                 }`}
               >
                 District Report
+              </button>
+              <button
+                onClick={() => setActiveTab('contacts')}
+                className={`px-6 py-4 text-sm font-medium ${
+                  activeTab === 'contacts'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Contacts
               </button>
               {!isViewer && (
                 <button
@@ -857,131 +868,60 @@ const AdminDashboard: React.FC = () => {
                         <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-3">Zone {zone.zone}</h3>
                         <div className="space-y-4">
                           {zone.district_directors.map(dd => {
-                            const ddKey = `${zone.zone}-${dd.name}`;
-                            const ddOpen = expandedDDs[ddKey] !== false;
                             const ddTotal = dd.assistant_governors.reduce((s, ag) => s + ag.total, 0);
                             const ddCompleted = dd.assistant_governors.reduce((s, ag) => s + ag.completed, 0);
                             const ddNot = dd.assistant_governors.reduce((s, ag) => s + ag.not_registered + ag.partial, 0);
                             return (
-                              <div key={dd.name} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-                                <button
-                                  onClick={() => setExpandedDDs(prev => ({ ...prev, [ddKey]: !ddOpen }))}
-                                  className="w-full flex items-center justify-between px-5 py-4 bg-gray-50 hover:bg-gray-100 text-left"
-                                >
-                                  <div>
-                                    <span className="font-semibold text-gray-900 text-base">District Director: {dd.name}</span>
-                                    <div className="flex gap-3 mt-1">
-                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ddCompleted} Completed</span>
-                                      <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ddNot} Pending</span>
-                                      <span className="text-xs text-gray-500">{ddTotal} clubs total</span>
-                                    </div>
+                              <div key={dd.name} className="border border-gray-200 rounded-xl p-4 shadow-sm bg-white">
+                                <div className="flex items-center justify-between mb-3">
+                                  <span className="font-semibold text-gray-900 text-base">District Director: {dd.name}</span>
+                                  <div className="flex gap-3">
+                                    <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ddCompleted} Completed</span>
+                                    <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{ddNot} Pending</span>
+                                    <span className="text-xs text-gray-500">{ddTotal} clubs total</span>
                                   </div>
-                                  <span className="text-gray-400 text-lg">{ddOpen ? '▲' : '▼'}</span>
-                                </button>
-
-                                {ddOpen && (
-                                  <div className="divide-y divide-gray-100">
-                                    {dd.assistant_governors.map(ag => {
-                                      const agKey = `${zone.zone}-${dd.name}-${ag.name}`;
-                                      const agOpen = expandedAGs[agKey] !== false;
-                                      const filterLower = districtFilter.toLowerCase();
-                                      const visibleClubs = ag.clubs.filter(c =>
-                                        !filterLower ||
-                                        c.name.toLowerCase().includes(filterLower) ||
-                                        ag.name.toLowerCase().includes(filterLower)
-                                      );
-                                      if (filterLower && visibleClubs.length === 0) return null;
-                                      return (
-                                        <div key={ag.name} className="bg-white">
-                                          <div className="flex items-center justify-between px-5 py-3 hover:bg-blue-50">
-                                            <button
-                                              onClick={() => setExpandedAGs(prev => ({ ...prev, [agKey]: !agOpen }))}
-                                              className="flex items-center gap-3 flex-1 text-left"
-                                            >
-                                              <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
-                                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.completed}/{ag.total}</span>
-                                              {ag.not_registered + ag.partial > 0 && (
-                                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
-                                                  {ag.not_registered + ag.partial} not done
-                                                </span>
-                                              )}
-                                            </button>
-                                            <div className="flex items-center gap-2">
-                                              {(() => {
-                                                const rs = reminderStatus[ag.name] || (ag.reminder_sent_today ? 'cooldown' : 'idle');
-                                                if (rs === 'sent' || rs === 'cooldown') {
-                                                  return <span className="text-xs text-gray-400 italic">Reminder sent today</span>;
-                                                }
-                                                return isViewer ? null : (
-                                                  <button
-                                                    onClick={() => sendAgReminder(ag.name)}
-                                                    disabled={rs === 'sending' || ag.not_registered + ag.partial === 0}
-                                                    className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-40"
-                                                  >
-                                                    {rs === 'sending' ? 'Sending…' : '📲 Send Reminder'}
-                                                  </button>
-                                                );
-                                              })()}
-                                              <span className="text-gray-400 text-sm ml-1">{agOpen ? '▲' : '▼'}</span>
-                                            </div>
-                                          </div>
-
-                                          {agOpen && (
-                                            <ul className="px-5 pb-3 space-y-1">
-                                              {visibleClubs.map(club => (
-                                                <li key={club.name} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
-                                                  <div className="flex items-center gap-2">
-                                                    {(club.status === 'completed' || club.participation_closed) && <span className="text-green-500 font-bold">✓</span>}
-                                                    {!club.participation_closed && club.status === 'partial'   && <span className="text-orange-500 font-bold">⚠</span>}
-                                                    {!club.participation_closed && club.status === 'not_registered' && <span className="text-red-500 font-bold">✗</span>}
-                                                    <span className={club.participation_closed ? 'text-green-800 font-medium' : club.status === 'not_registered' ? 'text-red-700' : club.status === 'partial' ? 'text-orange-700' : 'text-green-800 font-medium'}>
-                                                      {club.name}
-                                                    </span>
-                                                    {club.participation_closed && (
-                                                      <span className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Closed</span>
-                                                    )}
-                                                    {club.ggr && <span className="text-xs text-gray-400">(GGR: {club.ggr})</span>}
-                                                  </div>
-                                                  <div className="flex items-center gap-3">
-                                                    <span className="text-xs">
-                                                      {club.participation_closed ? (
-                                                        <span className="text-gray-500 italic">Not participating</span>
-                                                      ) : club.status === 'not_registered' ? (
-                                                        <span className="text-gray-400">Not registered</span>
-                                                      ) : (
-                                                        <span className="flex flex-wrap gap-1">
-                                                          {club.required_present.map(d => (
-                                                            <span key={d} className="bg-green-100 text-green-700 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
-                                                          ))}
-                                                          {club.required_missing.map(d => (
-                                                            <span key={d} className="bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded text-xs">{DESIGNATION_SHORT[d] || d}</span>
-                                                          ))}
-                                                        </span>
-                                                      )}
-                                                    </span>
-                                                    {!isViewer && (
-                                                      <button
-                                                        onClick={() => handleToggleClubParticipation(club.name, !club.participation_closed)}
-                                                        disabled={!!clubParticipationUpdating[club.name]}
-                                                        className="text-xs border border-gray-300 text-gray-700 px-2 py-1 rounded hover:bg-gray-50 disabled:opacity-40"
-                                                      >
-                                                        {clubParticipationUpdating[club.name]
-                                                          ? 'Saving…'
-                                                          : club.participation_closed
-                                                            ? '↩ Reopen'
-                                                            : '🚫 Close'}
-                                                      </button>
-                                                    )}
-                                                  </div>
-                                                </li>
-                                              ))}
-                                            </ul>
+                                </div>
+                                <div className="space-y-2">
+                                  {dd.assistant_governors.map(ag => {
+                                    const filterLower = districtFilter.toLowerCase();
+                                    const visibleClubs = ag.clubs.filter(c =>
+                                      !filterLower ||
+                                      c.name.toLowerCase().includes(filterLower) ||
+                                      ag.name.toLowerCase().includes(filterLower)
+                                    );
+                                    if (filterLower && visibleClubs.length === 0) return null;
+                                    return (
+                                      <div key={ag.name} className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                          <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
+                                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.completed}/{ag.total}</span>
+                                          {ag.not_registered + ag.partial > 0 && (
+                                            <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                                              {ag.not_registered + ag.partial} pending
+                                            </span>
                                           )}
                                         </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
+                                        <div className="flex items-center gap-2">
+                                          {(() => {
+                                            const rs = reminderStatus[ag.name] || (ag.reminder_sent_today ? 'cooldown' : 'idle');
+                                            if (rs === 'sent' || rs === 'cooldown') {
+                                              return <span className="text-xs text-gray-400 italic">Reminder sent today</span>;
+                                            }
+                                            return isViewer ? null : (
+                                              <button
+                                                onClick={() => sendAgReminder(ag.name)}
+                                                disabled={rs === 'sending' || ag.not_registered + ag.partial === 0}
+                                                className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                                              >
+                                                {rs === 'sending' ? 'Sending…' : '📲 Send Reminder'}
+                                              </button>
+                                            );
+                                          })()}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             );
                           })}
@@ -1214,6 +1154,8 @@ const AdminDashboard: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {activeTab === 'contacts' && <DistrictContacts />}
 
             {activeTab === 'settings' && !isViewer && (
               <div>
