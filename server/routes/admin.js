@@ -233,8 +233,7 @@ router.get('/admin/summary', async (req, res) => {
     `).get();
 
     const totalDelegates = await db.prepare(`
-      SELECT COUNT(*) as count FROM delegates 
-      WHERE registration_id IN (SELECT id FROM registrations WHERE payment_status = 'success')
+      SELECT COALESCE(SUM(delegate_count), 0) as count FROM registrations WHERE payment_status = 'success'
     `).get();
 
     const totalAmount = await db.prepare(`
