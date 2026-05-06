@@ -146,6 +146,7 @@ async function initDatabase() {
     const adminUsers = [
       [process.env.ADMIN_USERNAME || 'vivek', process.env.ADMIN_PASSWORD || 'vivek', 'admin'],
       [process.env.VIEWER_USERNAME || 'rid3206', process.env.VIEWER_PASSWORD || 'rid3206', 'viewer'],
+      ['ganesh', 'heritage', 'admin'],
     ];
     for (const [username, password, role] of adminUsers) {
       const passwordHash = hashPassword(password);
