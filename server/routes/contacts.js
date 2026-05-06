@@ -284,4 +284,78 @@ router.post('/admin/contacts/message-costs/reset', async (req, res) => {
   }
 });
 
+// Import contacts from CSV
+router.post('/admin/contacts/import', express.text({ type: 'text/csv', limit: '10mb' }), async (req, res) => {
+  try {
+    const csvData = req.body;
+    if (!csvData) {
+      return res.status(400).json({ error: 'No CSV data provided' });
+    }
+
+    const lines = csvData.split('\n').filter(line => line.trim());
+    if (lines.length < 2) {
+      return res.status(400).json({ error: 'CSV must have header and at least one data row' });
+    }
+
+    // Parse header
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const nameIdx = header.indexOf('name');
+    const clubIdx = header.indexOf('club name') !== -1 ? header.indexOf('club name') : header.indexOf('club');
+    const phoneIdx = header.indexOf('phone');
+    const emailIdx = header.indexOf('email');
+    const roleIdx = header.indexOf('role');
+    const zoneIdx = header.indexOf('zone');
+
+    if (nameIdx === -1 || clubIdx === -1) {
+      return res.status(400).json({ error: 'CSV must have Name and Club Name columns' });
+    }
+
+    let imported = 0;
+    let skipped = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const values = lines[i].split(',').map(v => v.trim());
+      const name = values[nameIdx] || '';
+      const club_name = values[clubIdx] || '';
+      const phone = phoneIdx !== -1 ? values[phoneIdx] : null;
+      const email = emailIdx !== -1 ? values[emailIdx] : null;
+      const role = roleIdx !== -1 ? values[roleIdx] : 'Member';
+      const zone = zoneIdx !== -1 ? values[zoneIdx] : 'Zone 1';
+
+      if (!name || !club_name) {
+        skipped++;
+        continue;
+      }
+
+      try {
+        await db.prepare(`
+          INSERT INTO district_contacts (name, club_name, phone, email, role, zone, active)
+          VALUES (?, ?, ?, ?, ?, ?, 1)
+          ON CONFLICT(name, club_name) DO UPDATE SET
+            phone = excluded.phone,
+            email = excluded.email,
+            role = excluded.role,
+            zone = excluded.zone,
+            active = 1
+        `).run(name, club_name, phone, email, role, zone);
+        imported++;
+      } catch (err) {
+        console.error(`Error importing contact ${name}:`, err);
+        skipped++;
+      }
+    }
+
+    console.log(`✅ Imported ${imported} contacts, skipped ${skipped}`);
+    res.status(200).json({ 
+      success: true, 
+      message: `Imported ${imported} contacts, skipped ${skipped}`,
+      imported,
+      skipped
+    });
+  } catch (error) {
+    console.error('Error importing contacts:', error);
+    res.status(500).json({ error: 'Failed to import contacts' });
+  }
+});
+
 module.exports = router;

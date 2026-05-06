@@ -178,37 +178,20 @@ const DistrictContacts: React.FC<DistrictContactsProps> = ({ userRole }) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       
-      const text = await file.text();
-      const lines = text.split('\n').slice(1); // Skip header
-      const contactsToImport = [];
-      
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const parts = line.split(',');
-        if (parts.length < 3) continue;
-        
-        contactsToImport.push({
-          name: parts[0]?.trim() || '',
-          club_name: parts[1]?.trim() || '',
-          phone: parts[2]?.trim() || '',
-          email: parts[3]?.trim() || '',
-          role: parts[4]?.trim() || '',
-          zone: parts[5]?.trim() || '',
-        });
-      }
+      const csvText = await file.text();
       
       try {
         const response = await fetch(`${API_URL}/admin/contacts/import`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contacts: contactsToImport }),
+          headers: { 'Content-Type': 'text/csv' },
+          body: csvText,
         });
         const data = await response.json();
         if (data.success) {
           alert(`Imported ${data.imported} contacts. Skipped ${data.skipped}.`);
           fetchContacts();
         } else {
-          alert('Failed to import contacts');
+          alert(data.error || 'Failed to import contacts');
         }
       } catch (error) {
         console.error('Error importing contacts:', error);
