@@ -27,7 +27,16 @@ const isRegistrationClosed = async () => {
   return Date.now() >= closeAtUtcMs;
 };
 
-const calculateAmount = (delegate_count) => {
+const calculateAmount = (delegate_count, email, phone, club_name) => {
+  // Special pricing for test user
+  if (
+    email && email.toLowerCase() === 'vivek@warblerit.com' &&
+    phone && phone.replace(/\s/g, '') === '9994472344' &&
+    club_name === 'Coimbatore Manchester'
+  ) {
+    return 1; // Rs.1 for testing
+  }
+
   if (delegate_count === 23) return 20000;
   if (delegate_count >= 19 && delegate_count <= 22) return 17500 + ((delegate_count - 18) * 1200);
   if (delegate_count === 18) return 17500;
@@ -80,7 +89,7 @@ router.post('/registrations', async (req, res) => {
       return res.status(400).json({ error: 'Phone must be 10 digits' });
     }
 
-    const total_amount = calculateAmount(delegateCountNum);
+    const total_amount = calculateAmount(delegateCountNum, email, phone, club_name);
     console.log('Creating registration:', { name, email, total_amount });
 
     const insertRegistration = db.prepare(`

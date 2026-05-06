@@ -255,6 +255,15 @@ const RegistrationForm: React.FC = () => {
   };
 
   const totalAmount = (() => {
+    // Special pricing for test user
+    if (
+      formData.email.toLowerCase() === 'vivek@warblerit.com' &&
+      formData.phone.replace(/\s/g, '') === '9994472344' &&
+      formData.club_name === 'Coimbatore Manchester'
+    ) {
+      return 1; // Rs.1 for testing
+    }
+
     const count = formData.delegate_count;
     if (count === 23) return 20000;
     if (count >= 19 && count <= 22) return 17500 + ((count - 18) * 1200);
