@@ -253,40 +253,30 @@ router.post('/admin/contacts/import', express.text({ type: 'text/csv', limit: '1
       return res.status(400).json({ error: 'No CSV data provided' });
     }
 
-    const lines = csvData.split('\n').filter(line => line.trim());
+    // Strip BOM, normalize line endings
+    const normalized = csvData.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    const lines = normalized.split('\n').filter(line => line.trim());
     if (lines.length < 2) {
       return res.status(400).json({ error: 'CSV must have header and at least one data row' });
     }
 
-    // Parse header
-    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
-    const nameIdx = header.indexOf('name');
-    const clubIdx = header.indexOf('club name') !== -1 ? header.indexOf('club name') : header.indexOf('club');
-    const phoneIdx = header.indexOf('phone');
-    const emailIdx = header.indexOf('email');
-    const roleIdx = header.indexOf('role');
-    const zoneIdx = header.indexOf('zone');
-
-    if (nameIdx === -1 || clubIdx === -1) {
-      return res.status(400).json({ error: 'CSV must have Name and Club Name columns' });
-    }
-
+    // CSV format: Name,Club Name,Phone,Email,Role,Zone (fixed positions, skip header row)
     let imported = 0;
     let skipped = 0;
 
     for (let i = 1; i < lines.length; i++) {
-      const values = lines[i].split(',').map(v => v.trim());
-      const name = values[nameIdx] || '';
-      const club_name = values[clubIdx] || '';
-      const phone = phoneIdx !== -1 ? values[phoneIdx] : null;
-      const email = emailIdx !== -1 ? values[emailIdx] : null;
-      const role = roleIdx !== -1 ? values[roleIdx] : 'Member';
-      const zone = zoneIdx !== -1 ? values[zoneIdx] : 'Zone 1';
+      const parts = lines[i].split(',');
+      if (parts.length < 2) { skipped++; continue; }
 
-      if (!name || !club_name) {
-        skipped++;
-        continue;
-      }
+      const name = (parts[0] || '').trim();
+      const club_name = (parts[1] || '').trim();
+      const phone = (parts[2] || '').trim().replace(/\D/g, '').slice(-10) || null;
+      const email = (parts[3] || '').trim() || null;
+      // Role and Zone may have been joined with comma if they wrapped
+      const role = (parts[4] || '').trim() || 'Member';
+      const zone = (parts[5] || '').trim() || 'Zone 1';
+
+      if (!name || !club_name) { skipped++; continue; }
 
       try {
         await db.prepare(`
