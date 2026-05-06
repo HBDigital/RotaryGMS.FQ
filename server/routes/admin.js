@@ -86,7 +86,7 @@ router.post('/admin/reconcile-payments', async (req, res) => {
           const m = lastReceipt.receipt_no.match(/(\d+)$/);
           if (m) nextNum = parseInt(m[1]) + 1;
         }
-        const receipt_no = `GMS2026-${String(nextNum).padStart(3, '0')}`;
+        const receipt_no = `DLA2026-${String(nextNum).padStart(3, '0')}`;
 
         await db.prepare(
           `UPDATE registrations SET payment_status = 'success', razorpay_payment_id = ?, receipt_no = ? WHERE id = ?`
@@ -167,7 +167,7 @@ router.post('/admin/manual-designation-payment', async (req, res) => {
       const m = lastReceipt.receipt_no.match(/(\d+)$/);
       if (m) nextNum = parseInt(m[1], 10) + 1;
     }
-    const receipt_no = `GMS2026-${String(nextNum).padStart(3, '0')}`;
+    const receipt_no = `DLA2026-${String(nextNum).padStart(3, '0')}`;
 
     const insertReg = await db.prepare(
       `INSERT INTO registrations
@@ -427,7 +427,7 @@ router.get('/admin/export-recent-transactions-excel', async (req, res) => {
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_Recent_Transactions_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=DLA2026_Recent_Transactions_${Date.now()}.xlsx`);
     res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('Error exporting recent transactions Excel:', error);
@@ -543,7 +543,7 @@ router.get('/admin/export-excel', async (req, res) => {
     const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_Registrations_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=DLA2026_Registrations_${Date.now()}.xlsx`);
     res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('Error exporting Excel:', error);
@@ -627,7 +627,7 @@ router.get('/admin/export-designation-excel', async (req, res) => {
 
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_${view}_report_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=DLA2026_${view}_report_${Date.now()}.xlsx`);
     res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('Error exporting designation Excel:', error);
@@ -1035,7 +1035,7 @@ router.get('/admin/export-dd-wise-excel', async (req, res) => {
     
     const buffer = await workbook.xlsx.writeBuffer();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=GMS2026_DD_Wise_Report_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=DLA2026_DD_Wise_Report_${Date.now()}.xlsx`);
     res.send(Buffer.from(buffer));
   } catch (error) {
     console.error('Error exporting DD-wise Excel:', error);

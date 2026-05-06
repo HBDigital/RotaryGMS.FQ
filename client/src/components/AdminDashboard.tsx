@@ -132,7 +132,7 @@ const AdminDashboard: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `GMS2026_${view}_report_${Date.now()}.xlsx`;
+      a.download = `DLA2026_${view}_report_${Date.now()}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -147,7 +147,7 @@ const AdminDashboard: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `GMS2026_Recent_Transactions_${Date.now()}.xlsx`;
+      a.download = `DLA2026_Recent_Transactions_${Date.now()}.xlsx`;
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -441,7 +441,7 @@ const AdminDashboard: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `GMS2026_Registrations_${Date.now()}.xlsx`);
+      link.setAttribute('download', `DLA2026_Registrations_${Date.now()}.xlsx`);
       document.body.appendChild(link);
       link.click();
       link.remove();

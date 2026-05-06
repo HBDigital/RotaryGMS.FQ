@@ -128,7 +128,7 @@ const RegistrationForm: React.FC = () => {
         key: keyId,
         amount: amount * 100,
         currency: 'INR',
-        name: 'GMS-RID3206',
+        name: 'DLA-RID3206',
         description: `Registration for ${formData.delegate_count} delegate(s)`,
         order_id: orderId,
         handler: async function (response: any) {

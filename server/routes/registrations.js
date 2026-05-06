@@ -258,7 +258,7 @@ router.post('/verify-payment', async (req, res) => {
       const match = lastReceipt.receipt_no.match(/(\d+)$/);
       if (match) nextReceiptNum = parseInt(match[1]) + 1;
     }
-    const receipt_no = `GMS2026-${String(nextReceiptNum).padStart(3, '0')}`;
+    const receipt_no = `DLA2026-${String(nextReceiptNum).padStart(3, '0')}`;
     console.log(`✅ Generated receipt number: ${receipt_no}`);
 
     // Step 5: Mark payment as SUCCESS and save receipt_no

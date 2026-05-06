@@ -76,7 +76,7 @@ async function sendReceiptEmail({ name, email, phone, club_name, delegate_count,
     `;
 
     await transporter.sendMail({
-      from: `"${process.env.FROM_NAME || 'Rotary 3206 GMS 2026'}" <${process.env.FROM_EMAIL || 'noreply@dla.feequick.com'}>`,
+      from: `"${process.env.FROM_NAME || 'Rotary 3206 DLA 2026'}" <${process.env.FROM_EMAIL || 'noreply@dla.feequick.com'}>`,
       to: email,
       subject: `Registration Confirmed — Receipt ${receipt_no} | District Learning Assembly`,
       html,
