@@ -282,12 +282,6 @@ router.post('/admin/contacts/import', express.text({ type: 'text/csv', limit: '1
         await db.prepare(`
           INSERT INTO district_contacts (name, club_name, phone, email, role, zone, active)
           VALUES (?, ?, ?, ?, ?, ?, 1)
-          ON CONFLICT(name, club_name) DO UPDATE SET
-            phone = excluded.phone,
-            email = excluded.email,
-            role = excluded.role,
-            zone = excluded.zone,
-            active = 1
         `).run(name, club_name, phone, email, role, zone);
         imported++;
       } catch (err) {
