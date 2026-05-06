@@ -18,7 +18,6 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
     // {{2}} = Receipt No
     // {{3}} = Club name
     // {{4}} = Number of delegates + total amount
-    // {{5}} = Host club - RCC Heritage
     const payload = {
       to: intlPhone,
       type: 'template',
@@ -36,7 +35,6 @@ async function sendWhatsAppReceipt({ name, phone, receipt_no, club_name, delegat
               { type: 'text', text: receipt_no },
               { type: 'text', text: club_name },
               { type: 'text', text: `${delegate_count} delegate(s), Rs.${total_amount.toLocaleString()} collected` },
-              { type: 'text', text: 'RCC Heritage' },
             ],
           },
         ],
