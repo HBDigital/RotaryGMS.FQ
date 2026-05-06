@@ -12,6 +12,12 @@ interface Contact {
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
+interface MessageCosts {
+  whatsapp: { count: number; cost: number };
+  email: { count: number; cost: number };
+  total: { count: number; cost: number };
+}
+
 const DistrictContacts: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
@@ -26,9 +32,11 @@ const DistrictContacts: React.FC = () => {
   const [emailSubject, setEmailSubject] = useState('');
   const [emailMessage, setEmailMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [messageCosts, setMessageCosts] = useState<MessageCosts | null>(null);
 
   useEffect(() => {
     fetchContacts();
+    fetchMessageCosts();
   }, []);
 
   useEffect(() => {
@@ -69,6 +77,37 @@ const DistrictContacts: React.FC = () => {
     }
   };
 
+  const fetchMessageCosts = async () => {
+    try {
+      const response = await fetch(`${API_URL}/admin/contacts/message-costs`);
+      const data = await response.json();
+      if (data.success) {
+        setMessageCosts(data);
+      }
+    } catch (error) {
+      console.error('Error fetching message costs:', error);
+    }
+  };
+
+  const handleResetCosts = async () => {
+    if (!confirm('Are you sure you want to reset all message cost counters?')) return;
+    try {
+      const response = await fetch(`${API_URL}/admin/contacts/message-costs/reset`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+      if (data.success) {
+        fetchMessageCosts();
+        alert('Message costs reset successfully');
+      } else {
+        alert('Failed to reset message costs');
+      }
+    } catch (error) {
+      console.error('Error resetting costs:', error);
+      alert('Failed to reset message costs');
+    }
+  };
+
   const zones = ['All', ...Array.from(new Set(contacts.map(c => c.zone)))].sort();
   const roles = ['All', ...Array.from(new Set(contacts.map(c => c.role)))].sort();
 
@@ -87,6 +126,7 @@ const DistrictContacts: React.FC = () => {
         setWhatsappModalOpen(false);
         setWhatsappMessage('');
         setSelectedContact(null);
+        fetchMessageCosts();
       } else {
         alert('Failed to send WhatsApp message');
       }
@@ -114,6 +154,7 @@ const DistrictContacts: React.FC = () => {
         setEmailSubject('');
         setEmailMessage('');
         setSelectedContact(null);
+        fetchMessageCosts();
       } else {
         alert('Failed to send email');
       }
@@ -188,6 +229,58 @@ const DistrictContacts: React.FC = () => {
           Import CSV
         </button>
       </div>
+
+      {/* Message Cost Counter */}
+      {messageCosts && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex gap-6 flex-wrap">
+              <div className="flex items-center gap-3">
+                <div className="bg-green-100 p-2 rounded-full">
+                  <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">WhatsApp</p>
+                  <p className="font-semibold text-gray-900">{messageCosts.whatsapp.count} msgs</p>
+                  <p className="text-xs text-gray-500">Rs.{messageCosts.whatsapp.cost.toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-100 p-2 rounded-full">
+                  <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Email</p>
+                  <p className="font-semibold text-gray-900">{messageCosts.email.count} msgs</p>
+                  <p className="text-xs text-gray-500">Rs.{messageCosts.email.cost.toFixed(2)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="bg-purple-100 p-2 rounded-full">
+                  <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total Cost</p>
+                  <p className="font-bold text-lg text-gray-900">Rs.{messageCosts.total.cost.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500">{messageCosts.total.count} messages</p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleResetCosts}
+              className="text-sm text-red-600 hover:text-red-800 underline"
+            >
+              Reset Counter
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">

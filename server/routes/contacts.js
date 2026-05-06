@@ -162,8 +162,13 @@ router.post('/admin/contacts/:id/whatsapp', async (req, res) => {
     }
 
     const result = await sendWhatsAppCustomMessage(contact.phone, message);
-    
+
     if (result.success) {
+      // Log cost
+      await db.prepare(
+        `INSERT INTO message_cost (message_type, recipient, cost) VALUES (?, ?, ?)`
+      ).run('whatsapp', contact.phone, 1.0);
+
       res.status(200).json({ success: true, message: 'WhatsApp message sent successfully' });
     } else {
       res.status(500).json({ error: 'Failed to send WhatsApp message' });
@@ -223,10 +228,59 @@ router.post('/admin/contacts/:id/email', async (req, res) => {
       html,
     });
 
+    // Log cost
+    await db.prepare(
+      `INSERT INTO message_cost (message_type, recipient, cost) VALUES (?, ?, ?)`
+    ).run('email', contact.email, 0.15);
+
     res.status(200).json({ success: true, message: 'Email sent successfully' });
   } catch (error) {
     console.error('Error sending email:', error);
     res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
+// Get message costs
+router.get('/admin/contacts/message-costs', async (req, res) => {
+  try {
+    const costs = await db.prepare(`
+      SELECT message_type, COUNT(*) as count, SUM(cost) as total_cost
+      FROM message_cost
+      GROUP BY message_type
+    `).all();
+
+    const whatsapp = costs.find(c => c.message_type === 'whatsapp') || { count: 0, total_cost: 0 };
+    const email = costs.find(c => c.message_type === 'email') || { count: 0, total_cost: 0 };
+
+    res.status(200).json({
+      success: true,
+      whatsapp: {
+        count: whatsapp.count,
+        cost: whatsapp.total_cost
+      },
+      email: {
+        count: email.count,
+        cost: email.total_cost
+      },
+      total: {
+        count: whatsapp.count + email.count,
+        cost: whatsapp.total_cost + email.total_cost
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching message costs:', error);
+    res.status(500).json({ error: 'Failed to fetch message costs' });
+  }
+});
+
+// Reset message costs
+router.post('/admin/contacts/message-costs/reset', async (req, res) => {
+  try {
+    await db.prepare(`DELETE FROM message_cost`).run();
+    res.status(200).json({ success: true, message: 'Message costs reset successfully' });
+  } catch (error) {
+    console.error('Error resetting message costs:', error);
+    res.status(500).json({ error: 'Failed to reset message costs' });
   }
 });
 

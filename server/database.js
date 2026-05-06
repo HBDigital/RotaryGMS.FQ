@@ -133,6 +133,14 @@ async function initDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS message_cost (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        message_type TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        cost REAL NOT NULL,
+        sent_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE INDEX IF NOT EXISTS idx_transactions_registration_id ON transactions(registration_id);
       CREATE INDEX IF NOT EXISTS idx_transactions_order_id ON transactions(razorpay_order_id);
     `;

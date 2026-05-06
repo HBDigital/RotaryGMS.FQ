@@ -1056,7 +1056,6 @@ router.get('/settings/registration-close-date', async (req, res) => {
     console.error('Error fetching registration close date:', error);
     res.status(500).json({ error: 'Failed to fetch registration close date' });
   }
-});
 
 // Update registration closure date setting (admin only)
 router.post('/admin/settings/registration-close-date', async (req, res) => {
@@ -1078,6 +1077,78 @@ router.post('/admin/settings/registration-close-date', async (req, res) => {
   } catch (error) {
     console.error('Error updating registration close date:', error);
     res.status(500).json({ error: 'Failed to update registration close date' });
+  }
+});
+
+router.post('/admin/registrations/:id/update-cost', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newAmount } = req.body;
+
+    if (!newAmount || isNaN(newAmount)) {
+      return res.status(400).json({ error: 'newAmount is required and must be a number' });
+    }
+
+    const registration = await db.prepare(`SELECT * FROM registrations WHERE id = ?`).get(id);
+    if (!registration) {
+      return res.status(404).json({ error: 'Registration not found' });
+    }
+
+    const amount = parseFloat(newAmount);
+
+    // Update registration amount
+    await db.prepare(`UPDATE registrations SET total_amount = ? WHERE id = ?`).run(amount, id);
+
+    // Update transaction amount if exists
+    const transactions = await db.prepare(`SELECT id FROM transactions WHERE registration_id = ?`).all(id);
+    for (const tx of transactions) {
+      await db.prepare(`UPDATE transactions SET amount = ? WHERE id = ?`).run(amount, tx.id);
+    }
+
+    console.log(`✅ Updated registration ID ${id} cost to Rs.${amount}`);
+    res.status(200).json({ success: true, message: `Registration cost updated to Rs.${amount}` });
+  } catch (error) {
+    console.error('Error updating registration cost:', error);
+    res.status(500).json({ error: 'Failed to update registration cost' });
+  }
+});
+
+router.post('/admin/registrations/update-cost-by-details', async (req, res) => {
+  try {
+    const { email, phone, clubName, newAmount } = req.body;
+
+    if (!newAmount || isNaN(newAmount)) {
+      return res.status(400).json({ error: 'newAmount is required and must be a number' });
+    }
+
+    if (!email || !phone || !clubName) {
+      return res.status(400).json({ error: 'email, phone, and clubName are required' });
+    }
+
+    const registration = await db.prepare(
+      `SELECT * FROM registrations WHERE email = ? AND phone = ? AND club_name = ?`
+    ).get(email, phone, clubName);
+
+    if (!registration) {
+      return res.status(404).json({ error: 'Registration not found with given details' });
+    }
+
+    const amount = parseFloat(newAmount);
+
+    // Update registration amount
+    await db.prepare(`UPDATE registrations SET total_amount = ? WHERE id = ?`).run(amount, registration.id);
+
+    // Update transaction amount if exists
+    const transactions = await db.prepare(`SELECT id FROM transactions WHERE registration_id = ?`).all(registration.id);
+    for (const tx of transactions) {
+      await db.prepare(`UPDATE transactions SET amount = ? WHERE id = ?`).run(amount, tx.id);
+    }
+
+    console.log(`✅ Updated registration for ${email} cost to Rs.${amount}`);
+    res.status(200).json({ success: true, message: `Registration cost updated to Rs.${amount}` });
+  } catch (error) {
+    console.error('Error updating registration cost:', error);
+    res.status(500).json({ error: 'Failed to update registration cost' });
   }
 });
 
