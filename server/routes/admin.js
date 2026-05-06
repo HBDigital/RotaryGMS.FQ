@@ -1056,6 +1056,7 @@ router.get('/settings/registration-close-date', async (req, res) => {
     console.error('Error fetching registration close date:', error);
     res.status(500).json({ error: 'Failed to fetch registration close date' });
   }
+});
 
 // Update registration closure date setting (admin only)
 router.post('/admin/settings/registration-close-date', async (req, res) => {
