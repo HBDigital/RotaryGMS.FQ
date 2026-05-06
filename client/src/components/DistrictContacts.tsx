@@ -90,7 +90,7 @@ const DistrictContacts: React.FC = () => {
   };
 
   const handleResetCosts = async () => {
-    if (!confirm('Are you sure you want to reset all message cost counters?')) return;
+    if (!window.confirm('Are you sure you want to reset all message cost counters?')) return;
     try {
       const response = await fetch(`${API_URL}/admin/contacts/message-costs/reset`, {
         method: 'POST',
