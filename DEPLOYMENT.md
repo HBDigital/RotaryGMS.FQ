@@ -1,17 +1,17 @@
-# 🚀 Production Deployment Guide - gms.feequick.com
+# 🚀 Production Deployment Guide - dla.feequick.com
 
 ## ✅ Configuration Complete
 
-The application has been configured for production hosting at `gms.feequick.com`.
+The application has been configured for production hosting at `dla.feequick.com`.
 
 ## 📋 Changes Made
 
 ### 1. Environment Configuration
-- ✅ Updated `.env` with `FRONTEND_URL=https://gms.feequick.com`
-- ✅ Created `client/.env.production` with `REACT_APP_API_URL=https://gms.feequick.com/api`
+- ✅ Updated `.env` with `FRONTEND_URL=https://dla.feequick.com`
+- ✅ Created `client/.env.production` with `REACT_APP_API_URL=https://dla.feequick.com/api`
 
 ### 2. Server Configuration
-- ✅ Updated CORS to allow `https://gms.feequick.com`
+- ✅ Updated CORS to allow `https://dla.feequick.com`
 - ✅ Added production static file serving
 - ✅ Added catch-all route for SPA support
 - ✅ Added environment logging
@@ -56,7 +56,7 @@ Create `.env` file on production server:
 PORT=5001
 RAZORPAY_KEY_ID=your_production_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_production_razorpay_secret
-FRONTEND_URL=https://gms.feequick.com
+FRONTEND_URL=https://dla.feequick.com
 NODE_ENV=production
 ```
 
@@ -69,9 +69,9 @@ NODE_ENV=production
 
 ## 🎯 Access URLs
 
-- **Main Application:** https://gms.feequick.com
-- **Admin Dashboard:** https://gms.feequick.com/admin
-- **API Health:** https://gms.feequick.com/api/health
+- **Main Application:** https://dla.feequick.com
+- **Admin Dashboard:** https://dla.feequick.com/admin
+- **API Health:** https://dla.feequick.com/api/health
 
 ## 🔒 Security Considerations
 
@@ -87,4 +87,4 @@ NODE_ENV=production
 npm run build-start
 ```
 
-The application is now ready for production deployment at gms.feequick.com!
+The application is now ready for production deployment at dla.feequick.com!

@@ -27,7 +27,7 @@ Create a full-stack web application for Rotary District 3206 Governor's Meet & S
 - **Web Server**: Nginx (reverse proxy + static file serving)
 - **Process Manager**: PM2
 - **SSL**: Let's Encrypt
-- **Domain**: gms.feequick.com
+- **Domain**: dla.feequick.com
 
 ## Core Features
 
@@ -386,7 +386,7 @@ For each club:
 PORT=5001
 RAZORPAY_KEY_ID=your_razorpay_key_id
 RAZORPAY_KEY_SECRET=your_razorpay_key_secret
-FRONTEND_URL=https://gms.feequick.com
+FRONTEND_URL=https://dla.feequick.com
 
 # Email Configuration
 EMAIL_HOST=smtp.gmail.com
@@ -411,7 +411,7 @@ REGISTRATION_CLOSE_DATE_IST=2026-05-03
 
 ### Frontend (.env)
 ```
-REACT_APP_API_URL=https://gms.feequick.com/api
+REACT_APP_API_URL=https://dla.feequick.com/api
 REACT_APP_RAZORPAY_KEY_ID=your_razorpay_key_id
 ```
 
@@ -456,10 +456,10 @@ RotaryGMS.FQ/
 ```nginx
 server {
     listen 443 ssl http2;
-    server_name gms.feequick.com;
+    server_name dla.feequick.com;
     
-    ssl_certificate /etc/letsencrypt/live/gms.feequick.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/gms.feequick.com/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/dla.feequick.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/dla.feequick.com/privkey.pem;
     
     # API Routes - Proxy to Node.js
     location /api {
@@ -543,7 +543,7 @@ pm2 startup
 
 6. **SSL Certificate**:
    ```bash
-   sudo certbot --nginx -d gms.feequick.com
+   sudo certbot --nginx -d dla.feequick.com
    ```
 
 ## Special Features & Considerations
