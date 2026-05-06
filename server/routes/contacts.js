@@ -102,45 +102,6 @@ router.delete('/admin/contacts/:id', async (req, res) => {
   }
 });
 
-// Bulk import contacts from CSV
-router.post('/admin/contacts/import', async (req, res) => {
-  try {
-    const { contacts } = req.body;
-    if (!Array.isArray(contacts)) {
-      return res.status(400).json({ error: 'contacts must be an array' });
-    }
-
-    let imported = 0;
-    let skipped = 0;
-
-    for (const contact of contacts) {
-      const { name, club_name, phone, email, role, zone } = contact;
-      if (!name || !club_name || !role || !zone) {
-        skipped++;
-        continue;
-      }
-
-      // Clean phone number
-      const cleanPhone = phone ? phone.replace(/\D/g, '').slice(-10) : null;
-
-      try {
-        await db.prepare(`
-          INSERT INTO district_contacts (name, club_name, phone, email, role, zone)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(name, club_name, cleanPhone, email || null, role, zone);
-        imported++;
-      } catch (e) {
-        // Skip duplicates
-        skipped++;
-      }
-    }
-
-    res.status(200).json({ success: true, imported, skipped });
-  } catch (error) {
-    console.error('Error importing contacts:', error);
-    res.status(500).json({ error: 'Failed to import contacts' });
-  }
-});
 
 // Send WhatsApp message to contact
 router.post('/admin/contacts/:id/whatsapp', async (req, res) => {
