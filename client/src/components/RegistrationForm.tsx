@@ -410,17 +410,17 @@ const RegistrationForm: React.FC = () => {
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 1 (5-10)</p>
+                  <p className="text-xs text-gray-500 mb-1">Group 1 <br />(5-10)</p>
                   <p className="text-lg font-bold text-gray-900">₹1,000</p>
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 2 (11-18)</p>
+                  <p className="text-xs text-gray-500 mb-1">Group 2 <br />(11-18)</p>
                   <p className="text-lg font-bold text-gray-900">₹900</p>
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 3 (above 19 members)</p>
+                  <p className="text-xs text-gray-500 mb-1">Group 3 <br />(above 19 members)</p>
                   <p className="text-lg font-bold text-gray-900">₹750</p>
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
