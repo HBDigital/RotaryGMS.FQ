@@ -421,7 +421,8 @@ const RegistrationForm: React.FC = () => {
                     <p className="text-sm font-medium text-gray-700 mb-2">Pricing Calculation:</p>
                     <div className="text-xs text-gray-600 space-y-1">
                       <p>{formData.delegate_count} Delegate{formData.delegate_count > 1 ? 's' : ''} × ₹{pricePerDelegate.toLocaleString()} = ₹{totalAmount.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-500 mt-1">1-4: ₹1250 | 5-10: ₹1000 | 11-18: ₹900 | 19-25: ₹750</p>
+                      <p className="text-[10px] text-gray-500 mt-1">individual registrations: ₹1250 
+                        <br /><b>Group 1:</b> 5-10: ₹1000 <br /> <b>Group 2:</b> 11-18: ₹900 <br /> <b>Group 3:</b> 19-25: ₹750</p>
                     </div>
                   </div>
                 </div>

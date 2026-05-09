@@ -649,6 +649,7 @@ const AdminDashboard: React.FC = () => {
               >
                 District Report
               </button>
+{/* District Contacts tab disabled
               <button
                 onClick={() => setActiveTab('contacts')}
                 className={`px-6 py-4 text-sm font-medium ${
@@ -659,6 +660,7 @@ const AdminDashboard: React.FC = () => {
               >
                 Contacts
               </button>
+*/}
               {!isViewer && (
                 <button
                   onClick={() => setActiveTab('settings')}
