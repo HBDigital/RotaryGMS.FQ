@@ -156,7 +156,7 @@ router.post('/admin/manual-designation-payment', async (req, res) => {
       return res.status(400).json({ error: 'Invalid phone number' });
     }
 
-    const amount = 1050;
+    const amount = 1000;
     const manualPaymentId = `manual_${Date.now()}`;
 
     const lastReceipt = await db.prepare(
