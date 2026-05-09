@@ -47,6 +47,9 @@ const calculateAmount = (delegate_count, email, phone, club_name) => {
   if (delegate_count < 1 || !Number.isInteger(delegate_count)) {
     throw new Error('Invalid delegate count. Must be a positive whole number.');
   }
+  if (delegate_count > 200) {
+    throw new Error('Maximum 200 delegates allowed.');
+  }
   return delegate_count * getPricePerDelegate(delegate_count);
 };
 

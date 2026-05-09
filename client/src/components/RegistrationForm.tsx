@@ -72,12 +72,14 @@ const RegistrationForm: React.FC = () => {
 
   const handleDelegateCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow empty or valid positive integers
+    // Allow empty or valid positive integers up to 200
     if (value === '' || /^[1-9]\d*$/.test(value)) {
       const count = value === '' ? 0 : parseInt(value, 10);
-      setFormData({ ...formData, delegate_count: count });
-      if (errors.delegate_count) {
-        setErrors({ ...errors, delegate_count: '' });
+      if (count <= 200) {
+        setFormData({ ...formData, delegate_count: count });
+        if (errors.delegate_count) {
+          setErrors({ ...errors, delegate_count: '' });
+        }
       }
     }
   };
@@ -101,6 +103,8 @@ const RegistrationForm: React.FC = () => {
       newErrors.delegate_count = 'Please enter a valid number of delegates (minimum 1)';
     } else if (!Number.isInteger(formData.delegate_count)) {
       newErrors.delegate_count = 'Please enter a whole number';
+    } else if (formData.delegate_count > 200) {
+      newErrors.delegate_count = 'Maximum 200 delegates allowed';
     }
 
     setErrors(newErrors);
