@@ -15,8 +15,7 @@ const transporter = nodemailer.createTransport({
 
 async function sendReceiptEmail({ name, email, phone, club_name, delegate_count, total_amount, receipt_no, payment_id }) {
   try {
-    // Replace Manchester with Heritage in club name for display
-    const displayClubName = club_name.replace(/Manchester/gi, 'Heritage');
+    const displayClubName = club_name;
 
     const plainText = `
 District Learning Assembly - Rotary District 3206
