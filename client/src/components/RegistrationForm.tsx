@@ -70,9 +70,16 @@ const RegistrationForm: React.FC = () => {
     }
   };
 
-  const handleDelegateCountChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const count = parseInt(e.target.value);
-    setFormData({ ...formData, delegate_count: count });
+  const handleDelegateCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Allow empty or valid positive integers
+    if (value === '' || /^[1-9]\d*$/.test(value)) {
+      const count = value === '' ? 0 : parseInt(value, 10);
+      setFormData({ ...formData, delegate_count: count });
+      if (errors.delegate_count) {
+        setErrors({ ...errors, delegate_count: '' });
+      }
+    }
   };
 
   const validateForm = (): boolean => {
@@ -90,8 +97,10 @@ const RegistrationForm: React.FC = () => {
       newErrors.phone = 'Phone must be 10 digits';
     }
     if (!formData.club_name.trim()) newErrors.club_name = 'Club name is required';
-    if (formData.delegate_count < 1 || formData.delegate_count > 23) {
-      newErrors.delegate_count = 'Delegate count must be between 1 and 23';
+    if (!formData.delegate_count || formData.delegate_count < 1) {
+      newErrors.delegate_count = 'Please enter a valid number of delegates (minimum 1)';
+    } else if (!Number.isInteger(formData.delegate_count)) {
+      newErrors.delegate_count = 'Please enter a whole number';
     }
 
     setErrors(newErrors);
@@ -258,8 +267,7 @@ const RegistrationForm: React.FC = () => {
     if (delegateCount <= 4) return 1250;
     if (delegateCount <= 10) return 1000;
     if (delegateCount <= 18) return 900;
-    if (delegateCount <= 25) return 750;
-    return 750;
+    return 750; // 19 and above
   };
 
   const totalAmount = (() => {
@@ -408,7 +416,7 @@ const RegistrationForm: React.FC = () => {
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 3 (19-25)</p>
+                  <p className="text-xs text-gray-500 mb-1">Group 3 (above 19 members)</p>
                   <p className="text-lg font-bold text-gray-900">₹750</p>
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
@@ -424,20 +432,16 @@ const RegistrationForm: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Number of Delegates <span className="text-red-500">*</span>
                   </label>
-                  <select
+                  <input
+                    type="text"
                     name="delegate_count"
-                    value={formData.delegate_count}
+                    value={formData.delegate_count || ''}
                     onChange={handleDelegateCountChange}
-                    className={`w-full px-4 py-2 pr-10 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white appearance-none cursor-pointer ${
+                    placeholder="Enter number of delegates"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white ${
                       errors.delegate_count ? 'border-red-500' : 'border-gray-300'
                     }`}
-                  >
-                    {Array.from({ length: 25 }, (_, i) => i + 1).map((num) => (
-                      <option key={num} value={num}>
-                        {num} Delegate{num > 1 ? 's' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  />
                   {errors.delegate_count && (
                     <p className="text-red-500 text-sm mt-1">{errors.delegate_count}</p>
                   )}

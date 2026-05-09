@@ -31,8 +31,7 @@ const getPricePerDelegate = (delegateCount) => {
   if (delegateCount <= 4) return 1250;
   if (delegateCount <= 10) return 1000;
   if (delegateCount <= 18) return 900;
-  if (delegateCount <= 25) return 750;
-  return 750;
+  return 750; // 19 and above
 };
 
 const calculateAmount = (delegate_count, email, phone, club_name) => {
@@ -45,8 +44,8 @@ const calculateAmount = (delegate_count, email, phone, club_name) => {
     return 1; // Rs.1 for testing
   }
 
-  if (delegate_count < 1 || delegate_count > 25) {
-    throw new Error('Invalid delegate count. Must be between 1 and 25.');
+  if (delegate_count < 1 || !Number.isInteger(delegate_count)) {
+    throw new Error('Invalid delegate count. Must be a positive whole number.');
   }
   return delegate_count * getPricePerDelegate(delegate_count);
 };
