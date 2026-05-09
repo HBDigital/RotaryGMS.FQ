@@ -897,7 +897,7 @@ const AdminDashboard: React.FC = () => {
                                                   : 'bg-red-100 text-red-700'
                                               }`}
                                             >
-                                              {club.name} ({club.required_present.length}/2)
+                                              {club.name} ({club.required_present.length})
                                             </span>
                                           ))}
                                         </div>
