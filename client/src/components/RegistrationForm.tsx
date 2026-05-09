@@ -388,8 +388,36 @@ const RegistrationForm: React.FC = () => {
               </div>
             </div>
 
+            {/* Registration Pricing */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 mb-6">
+              <p className="text-sm font-semibold text-gray-800 mb-3">Registration Pricing</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Individual (1-4)</p>
+                  <p className="text-lg font-bold text-gray-900">₹1,250</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 1 (5-10)</p>
+                  <p className="text-lg font-bold text-gray-900">₹1,000</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 2 (11-18)</p>
+                  <p className="text-lg font-bold text-gray-900">₹900</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 3 (19-25)</p>
+                  <p className="text-lg font-bold text-gray-900">₹750</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Delegate Details & Pricing */}
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 sm:p-6 mb-6">
-              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Delegate Details & Pricing</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-4">Delegate Details</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -418,40 +446,9 @@ const RegistrationForm: React.FC = () => {
                 <div>
                   {/* Pricing Calculation Display */}
                   <div className="p-4 bg-green-100 rounded-lg border border-green-300">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Pricing Calculation:</p>
-                    <div className="text-xs text-gray-600 space-y-1">
-                      <p>{formData.delegate_count} Delegate{formData.delegate_count > 1 ? 's' : ''} × ₹{pricePerDelegate.toLocaleString()} = ₹{totalAmount.toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-500 mt-1">individual registrations: ₹1250 
-                        <br /><b>Group 1:</b> 5-10: ₹1000 <br /> <b>Group 2:</b> 11-18: ₹900 <br /> <b>Group 3:</b> 19-25: ₹750</p>
-                    </div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Your Calculation:</p>
+                    <p className="text-lg font-bold text-gray-900">{formData.delegate_count} Delegate{formData.delegate_count > 1 ? 's' : ''} × ₹{pricePerDelegate.toLocaleString()} = ₹{totalAmount.toLocaleString()}</p>
                   </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Pricing Slabs Display */}
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 mb-4">
-              <p className="text-sm font-semibold text-gray-800 mb-3">Registration Pricing</p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Individual (1-4)</p>
-                  <p className="text-lg font-bold text-gray-900">₹1,250</p>
-                  <p className="text-[10px] text-gray-400">per delegate</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 1 (5-10)</p>
-                  <p className="text-lg font-bold text-gray-900">₹1,000</p>
-                  <p className="text-[10px] text-gray-400">per delegate</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 2 (11-18)</p>
-                  <p className="text-lg font-bold text-gray-900">₹900</p>
-                  <p className="text-[10px] text-gray-400">per delegate</p>
-                </div>
-                <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Group 3 (19-25)</p>
-                  <p className="text-lg font-bold text-gray-900">₹750</p>
-                  <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
               </div>
             </div>
