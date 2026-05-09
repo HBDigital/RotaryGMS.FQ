@@ -582,25 +582,6 @@ const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <div className="mb-3 sm:mb-0">
-                  <p className="text-xs sm:text-sm text-gray-600">Not Participating</p>
-                  <button
-                    type="button"
-                    onClick={() => setClubListModalType('closed')}
-                    className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1 hover:underline"
-                  >
-                    {closedClubNames.length}
-                  </button>
-                </div>
-                <div className="bg-red-100 p-2 sm:p-3 rounded-full">
-                  <svg className="w-6 h-6 sm:w-8 sm:h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-              </div>
-            </div>
           </div>
         )}
 
@@ -894,8 +875,8 @@ const AdminDashboard: React.FC = () => {
                                     );
                                     if (filterLower && visibleClubs.length === 0) return null;
                                     return (
-                                      <div key={ag.name} className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-lg">
-                                        <div className="flex items-center gap-3">
+                                      <div key={ag.name} className="bg-gray-50 rounded-lg p-3">
+                                        <div className="flex items-center gap-3 mb-2">
                                           <span className="text-sm font-medium text-gray-800">AG: {ag.name}</span>
                                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">{ag.completed}/{ag.total}</span>
                                           {ag.not_registered + ag.partial > 0 && (
@@ -904,22 +885,21 @@ const AdminDashboard: React.FC = () => {
                                             </span>
                                           )}
                                         </div>
-                                        <div className="flex items-center gap-2">
-                                          {(() => {
-                                            const rs = reminderStatus[ag.name] || (ag.reminder_sent_today ? 'cooldown' : 'idle');
-                                            if (rs === 'sent' || rs === 'cooldown') {
-                                              return <span className="text-xs text-gray-400 italic">Reminder sent today</span>;
-                                            }
-                                            return isViewer ? null : (
-                                              <button
-                                                onClick={() => sendAgReminder(ag.name)}
-                                                disabled={rs === 'sending' || ag.not_registered + ag.partial === 0}
-                                                className="text-xs bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 disabled:opacity-40"
-                                              >
-                                                {rs === 'sending' ? 'Sending…' : '📲 Send Reminder'}
-                                              </button>
-                                            );
-                                          })()}
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                          {visibleClubs.map(club => (
+                                            <span
+                                              key={club.name}
+                                              className={`text-xs px-2 py-1 rounded ${
+                                                club.status === 'completed'
+                                                  ? 'bg-green-100 text-green-700'
+                                                  : club.status === 'partial'
+                                                  ? 'bg-yellow-100 text-yellow-700'
+                                                  : 'bg-red-100 text-red-700'
+                                              }`}
+                                            >
+                                              {club.name} ({club.required_present.length}/2)
+                                            </span>
+                                          ))}
                                         </div>
                                       </div>
                                     );
