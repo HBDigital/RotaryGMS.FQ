@@ -27,6 +27,14 @@ const isRegistrationClosed = async () => {
   return Date.now() >= closeAtUtcMs;
 };
 
+const getPricePerDelegate = (delegateCount) => {
+  if (delegateCount <= 4) return 1250;
+  if (delegateCount <= 10) return 1000;
+  if (delegateCount <= 18) return 900;
+  if (delegateCount <= 25) return 750;
+  return 750;
+};
+
 const calculateAmount = (delegate_count, email, phone, club_name) => {
   // Special pricing for test user
   if (
@@ -37,13 +45,10 @@ const calculateAmount = (delegate_count, email, phone, club_name) => {
     return 1; // Rs.1 for testing
   }
 
-  if (delegate_count === 23) return 20000;
-  if (delegate_count >= 19 && delegate_count <= 22) return 17500 + ((delegate_count - 18) * 1200);
-  if (delegate_count === 18) return 17500;
-  if (delegate_count >= 13 && delegate_count <= 17) return 13500 + ((delegate_count - 12) * 1200);
-  if (delegate_count === 12) return 13500;
-  if (delegate_count >= 1 && delegate_count <= 11) return delegate_count * 1200;
-  throw new Error('Invalid delegate count. Must be between 1 and 23.');
+  if (delegate_count < 1 || delegate_count > 25) {
+    throw new Error('Invalid delegate count. Must be between 1 and 25.');
+  }
+  return delegate_count * getPricePerDelegate(delegate_count);
 };
 
 router.post('/registrations', async (req, res) => {

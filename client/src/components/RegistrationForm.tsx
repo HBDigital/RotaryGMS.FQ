@@ -254,6 +254,14 @@ const RegistrationForm: React.FC = () => {
     }
   };
 
+  const getPricePerDelegate = (delegateCount: number) => {
+    if (delegateCount <= 4) return 1250;
+    if (delegateCount <= 10) return 1000;
+    if (delegateCount <= 18) return 900;
+    if (delegateCount <= 25) return 750;
+    return 750;
+  };
+
   const totalAmount = (() => {
     // Special pricing for test user
     if (
@@ -265,14 +273,10 @@ const RegistrationForm: React.FC = () => {
     }
 
     const count = formData.delegate_count;
-    if (count === 23) return 20000;
-    if (count >= 19 && count <= 22) return 17500 + ((count - 18) * 1200);
-    if (count === 18) return 17500;
-    if (count >= 13 && count <= 17) return 13500 + ((count - 12) * 1200);
-    if (count === 12) return 13500;
-    if (count >= 1 && count <= 11) return count * 1200;
-    return 0;
+    return count * getPricePerDelegate(count);
   })();
+
+  const pricePerDelegate = getPricePerDelegate(formData.delegate_count);
 
   return (
     <div className="min-h-screen py-4 px-4 sm:px-6 lg:px-8">
@@ -400,7 +404,7 @@ const RegistrationForm: React.FC = () => {
                       errors.delegate_count ? 'border-red-500' : 'border-gray-300'
                     }`}
                   >
-                    {Array.from({ length: 23 }, (_, i) => i + 1).map((num) => (
+                    {Array.from({ length: 25 }, (_, i) => i + 1).map((num) => (
                       <option key={num} value={num}>
                         {num} Delegate{num > 1 ? 's' : ''}
                       </option>
@@ -416,28 +420,8 @@ const RegistrationForm: React.FC = () => {
                   <div className="p-4 bg-green-100 rounded-lg border border-green-300">
                     <p className="text-sm font-medium text-gray-700 mb-2">Pricing Calculation:</p>
                     <div className="text-xs text-gray-600 space-y-1">
-                      {(() => {
-                        const count = formData.delegate_count;
-                        let pricing = '';
-                        if (count === 23) {
-                          pricing = '23 Delegates: ₹20,000 (Special Package)';
-                        } else if (count >= 19 && count <= 22) {
-                          const base = 17500;
-                          const additional = (count - 18) * 1200;
-                          pricing = `18 Delegates: ₹17,500 + ${(count - 18)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
-                        } else if (count === 18) {
-                          pricing = '18 Delegates: ₹17,500 (Special Package)';
-                        } else if (count >= 13 && count <= 17) {
-                          const base = 13500;
-                          const additional = (count - 12) * 1200;
-                          pricing = `12 Delegates: ₹13,500 + ${(count - 12)} × ₹1,200 = ₹${(base + additional).toLocaleString()}`;
-                        } else if (count === 12) {
-                          pricing = '12 Delegates: ₹13,500 (Special Package)';
-                        } else {
-                          pricing = `${count} Delegates × ₹1,200 = ₹${(count * 1200).toLocaleString()}`;
-                        }
-                        return <p>{pricing}</p>;
-                      })()}
+                      <p>{formData.delegate_count} Delegate{formData.delegate_count > 1 ? 's' : ''} × ₹{pricePerDelegate.toLocaleString()} = ₹{totalAmount.toLocaleString()}</p>
+                      <p className="text-[10px] text-gray-500 mt-1">1-4: ₹1250 | 5-10: ₹1000 | 11-18: ₹900 | 19-25: ₹750</p>
                     </div>
                   </div>
                 </div>
@@ -450,7 +434,7 @@ const RegistrationForm: React.FC = () => {
                   <p className="text-sm opacity-90">Total Amount</p>
                   <p className="text-2xl sm:text-3xl font-bold">₹{totalAmount.toLocaleString()}</p>
                   <p className="text-sm opacity-90 mt-1">
-                    {formData.delegate_count} delegate(s) registration
+                    {formData.delegate_count} delegate(s) × ₹{pricePerDelegate.toLocaleString()} each
                   </p>
                 </div>
                 <button
