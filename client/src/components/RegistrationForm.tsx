@@ -405,7 +405,7 @@ const RegistrationForm: React.FC = () => {
               <p className="text-sm font-semibold text-gray-800 mb-3">Registration Pricing</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="bg-white border border-gray-200 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Individual (1-4)</p>
+                  <p className="text-xs text-gray-500 mb-1">Individual <br />(1-4)</p>
                   <p className="text-lg font-bold text-gray-900">₹1,250</p>
                   <p className="text-[10px] text-gray-400">per delegate</p>
                 </div>
