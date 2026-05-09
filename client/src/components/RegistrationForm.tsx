@@ -429,6 +429,33 @@ const RegistrationForm: React.FC = () => {
               </div>
             </div>
 
+            {/* Pricing Slabs Display */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 sm:p-5 mb-4">
+              <p className="text-sm font-semibold text-gray-800 mb-3">Registration Pricing</p>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Individual (1-4)</p>
+                  <p className="text-lg font-bold text-gray-900">₹1,250</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 1 (5-10)</p>
+                  <p className="text-lg font-bold text-gray-900">₹1,000</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 2 (11-18)</p>
+                  <p className="text-lg font-bold text-gray-900">₹900</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-lg p-3">
+                  <p className="text-xs text-gray-500 mb-1">Group 3 (19-25)</p>
+                  <p className="text-lg font-bold text-gray-900">₹750</p>
+                  <p className="text-[10px] text-gray-400">per delegate</p>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-4 sm:p-6 text-white">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
                 <div>
