@@ -101,7 +101,7 @@ District Learning Assembly Committee
             </table>
 
             <p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">
-              For queries, contact us at <a href="mailto:info@rotary3206.org" style="color:#1e40af;text-decoration:none;">info@rotary3206.org</a>
+              For queries, contact <b>Rotary Club of Coimbatore Heritage</b>
             </p>
           </div>
 

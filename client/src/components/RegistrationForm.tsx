@@ -123,17 +123,32 @@ const RegistrationForm: React.FC = () => {
 
   const handlePayment = async (registrationId: number, amount: number) => {
     try {
+      console.log('=== Starting payment process ===');
+      console.log('Loading Razorpay script...');
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
+        console.error('Failed to load Razorpay script');
         alert('Failed to load payment gateway. Please try again.');
+        setLoading(false);
         return;
       }
+      console.log('Razorpay script loaded successfully');
 
+      console.log('Creating order...', { registrationId, amount });
       const orderResponse = await fetch(`${API_URL}/create-order`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ registrationId, amount }),
       }).then(res => res.json());
+      
+      console.log('Order response:', orderResponse);
+
+      if (!orderResponse.orderId || !orderResponse.keyId) {
+        console.error('Invalid order response:', orderResponse);
+        alert(orderResponse.error || 'Failed to create payment order. Please try again.');
+        setLoading(false);
+        return;
+      }
 
       const { orderId, keyId } = orderResponse;
 
@@ -219,8 +234,10 @@ const RegistrationForm: React.FC = () => {
         }
       };
 
+      console.log('Opening Razorpay checkout...');
       const razorpay = new window.Razorpay(options);
       razorpay.open();
+      console.log('Razorpay checkout opened');
     } catch (error) {
       console.error('Payment error:', error);
       alert('Failed to initiate payment. Please try again.');
@@ -230,27 +247,38 @@ const RegistrationForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('=== Proceed to Payment clicked ===');
+    console.log('Form data:', formData);
 
     if (registrationClosed) {
+      console.log('Registration closed, blocking submission');
       alert(`Registrations are closed from ${registrationCloseDate} (IST)`);
       return;
     }
 
     if (!validateForm()) {
+      console.log('Form validation failed, errors:', errors);
       return;
     }
 
+    console.log('Form validation passed, submitting...');
     setLoading(true);
 
     try {
-      const apiResult = await fetch(`${API_URL}/registrations`, {
+      console.log('Sending registration request to API...');
+      const response = await fetch(`${API_URL}/registrations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
-      }).then(async (res) => ({ status: res.status, body: await res.json() }));
-      const responseBody = apiResult.body;
+      });
+      
+      console.log('API response status:', response.status);
+      const responseBody = await response.json();
+      console.log('API response body:', responseBody);
 
       if (responseBody?.closed) {
+        console.log('Registration closed response from server');
         alert(responseBody.error || `Registrations are closed from ${registrationCloseDate} (IST)`);
         setLoading(false);
         return;
@@ -258,11 +286,16 @@ const RegistrationForm: React.FC = () => {
       
       if (responseBody.success) {
         const { registrationId, total_amount } = responseBody;
+        console.log('Registration successful, proceeding to payment:', { registrationId, total_amount });
         await handlePayment(registrationId, total_amount);
+      } else {
+        console.error('Registration failed:', responseBody.error || 'Unknown error');
+        alert(responseBody.error || 'Registration failed. Please try again.');
+        setLoading(false);
       }
     } catch (error) {
       console.error('Registration error:', error);
-      alert('Failed to create registration. Please try again.');
+      alert('Failed to create registration. Please check your internet connection and try again.');
       setLoading(false);
     }
   };
