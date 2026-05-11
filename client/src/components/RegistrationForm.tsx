@@ -97,7 +97,7 @@ const RegistrationForm: React.FC = () => {
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (): { valid: boolean; errors: Record<string, string> } => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) newErrors.name = 'Name is required';
@@ -121,7 +121,7 @@ const RegistrationForm: React.FC = () => {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return { valid: Object.keys(newErrors).length === 0, errors: newErrors };
   };
 
   const loadRazorpayScript = (): Promise<boolean> => {
@@ -264,8 +264,12 @@ const RegistrationForm: React.FC = () => {
       return;
     }
 
-    if (!validateForm()) {
-      serverLog('warn', 'Form validation failed', { errors });
+    const validation = validateForm();
+    if (!validation.valid) {
+      const failedFields = Object.entries(validation.errors)
+        .map(([field, error]) => `${field}: ${error}`)
+        .join(', ');
+      serverLog('warn', `Form validation failed - ${failedFields}`, { validationErrors: validation.errors });
       return;
     }
 

@@ -373,10 +373,16 @@ router.post('/log', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
     
+    // Get real client IP (handle proxies)
+    const clientIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() 
+      || req.headers['x-real-ip'] 
+      || req.socket?.remoteAddress 
+      || req.ip;
+    
     // Add client IP and user agent to details
     const enrichedDetails = {
       ...details,
-      ip: req.ip || req.connection?.remoteAddress,
+      ip: clientIp,
       userAgent: req.headers['user-agent']
     };
     
