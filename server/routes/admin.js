@@ -1210,4 +1210,61 @@ router.post('/admin/registrations/:id/resend-notifications', async (req, res) =>
   }
 });
 
+// Get logs for admin panel
+router.get('/admin/logs', async (req, res) => {
+  try {
+    const { level, category, limit = 100, offset = 0 } = req.query;
+    
+    let sql = 'SELECT * FROM logs';
+    const params = [];
+    const conditions = [];
+    
+    if (level) {
+      conditions.push('level = ?');
+      params.push(level);
+    }
+    if (category) {
+      conditions.push('category = ?');
+      params.push(category);
+    }
+    
+    if (conditions.length > 0) {
+      sql += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    sql += ' ORDER BY timestamp DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const logs = await db.prepare(sql).all(...params);
+    const countResult = await db.prepare('SELECT COUNT(*) as total FROM logs').get();
+    
+    res.json({ 
+      logs: logs.map(log => ({
+        ...log,
+        details: log.details ? JSON.parse(log.details) : null
+      })),
+      total: countResult?.total || 0
+    });
+  } catch (error) {
+    console.error('Error fetching logs:', error);
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
+// Clear old logs
+router.delete('/admin/logs', async (req, res) => {
+  try {
+    const { days = 7 } = req.query;
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - parseInt(days));
+    
+    await db.prepare('DELETE FROM logs WHERE timestamp < ?').run(cutoffDate.toISOString());
+    
+    res.json({ success: true, message: `Logs older than ${days} days deleted` });
+  } catch (error) {
+    console.error('Error clearing logs:', error);
+    res.status(500).json({ error: 'Failed to clear logs' });
+  }
+});
+
 module.exports = router;

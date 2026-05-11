@@ -4,6 +4,7 @@ const db = require('../database');
 const { createOrder, verifyPaymentSignature, razorpay } = require('../utils/razorpay');
 const { sendReceiptEmail } = require('../utils/email');
 const { sendWhatsAppReceipt } = require('../utils/whatsapp');
+const logger = require('../utils/logger');
 
 const getRegistrationCloseDate = async () => {
   try {
@@ -64,13 +65,13 @@ router.post('/registrations', async (req, res) => {
       });
     }
 
-    console.log('Registration request received:', req.body);
+    logger.info('registration', 'Registration request received', { body: req.body });
     
     const { name, email, phone, club_name, delegate_count } = req.body;
 
     // Enhanced validation
     if (!name || !email || !phone || !club_name || !delegate_count) {
-      console.error('Missing required fields:', { name, email, phone, club_name, delegate_count });
+      logger.warn('registration', 'Missing required fields', { name, email, phone, club_name, delegate_count });
       return res.status(400).json({ 
         error: 'All fields are required',
         missing: { name, email, phone, club_name, delegate_count }
@@ -97,7 +98,7 @@ router.post('/registrations', async (req, res) => {
     }
 
     const total_amount = calculateAmount(delegateCountNum, email, phone, club_name);
-    console.log('Creating registration:', { name, email, total_amount });
+    logger.info('registration', 'Creating registration', { name, email, total_amount });
 
     const insertRegistration = db.prepare(`
       INSERT INTO registrations (name, email, phone, club_name, delegate_count, total_amount, payment_status)
@@ -107,8 +108,7 @@ router.post('/registrations', async (req, res) => {
     const result = await insertRegistration.run(name, email, phone, club_name, delegate_count, total_amount);
     const registrationId = result.lastInsertRowid;
     
-    console.log('Registration created with ID:', registrationId);
-    console.log('Delegate count:', delegateCountNum, 'Amount:', total_amount);
+    logger.info('registration', 'Registration created', { registrationId, delegateCount: delegateCountNum, amount: total_amount });
 
     res.status(201).json({
       success: true,
@@ -116,8 +116,7 @@ router.post('/registrations', async (req, res) => {
       total_amount: total_amount,
     });
   } catch (error) {
-    console.error('Error creating registration:', error);
-    console.error('Stack trace:', error.stack);
+    logger.error('registration', 'Error creating registration', { error: error.message, stack: error.stack });
     
     // Provide more specific error messages
     if (error.message.includes('SQLITE') || error.message.includes('database')) {
@@ -186,7 +185,7 @@ router.post('/create-order', async (req, res) => {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error('Error creating order:', error);
+    logger.error('payment', 'Error creating order', { error: error.message, registrationId: req.body?.registrationId });
     res.status(500).json({ error: 'Failed to create order' });
   }
 });
@@ -203,8 +202,7 @@ router.post('/verify-payment', async (req, res) => {
     const isValid = verifyPaymentSignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
 
     if (!isValid) {
-      // Log failed signature verification
-      console.error(`Payment signature verification failed for order ${razorpay_order_id}`);
+      logger.error('payment', 'Payment signature verification failed', { orderId: razorpay_order_id, paymentId: razorpay_payment_id });
       
       const updateTransaction = db.prepare(`
         UPDATE transactions 
@@ -361,8 +359,32 @@ router.post('/verify-payment', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error verifying payment:', error);
+    logger.error('payment', 'Error verifying payment', { error: error.message });
     res.status(500).json({ error: 'Failed to verify payment' });
+  }
+});
+
+// Client-side logging endpoint
+router.post('/log', async (req, res) => {
+  try {
+    const { level = 'info', category = 'client', message, details } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    // Add client IP and user agent to details
+    const enrichedDetails = {
+      ...details,
+      ip: req.ip || req.connection?.remoteAddress,
+      userAgent: req.headers['user-agent']
+    };
+    
+    await logger[level] ? logger[level](category, message, enrichedDetails) : logger.info(category, message, enrichedDetails);
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to log' });
   }
 });
 

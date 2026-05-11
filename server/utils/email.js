@@ -101,7 +101,7 @@ District Learning Assembly Committee
             </table>
 
             <p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">
-              For queries, contact <b>Rotary Club of Coimbatore Heritage</b>
+              For queries, contact <b>Rotary Club of Coimbatore Heritage | Rtn.Ganesh:9842237917</b>
             </p>
           </div>
 

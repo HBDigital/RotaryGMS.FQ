@@ -76,6 +76,15 @@ interface ClubDesignationReportItem {
   registrations: ClubDesignationRegistration[];
 }
 
+interface LogEntry {
+  id: number;
+  timestamp: string;
+  level: string;
+  category: string;
+  message: string;
+  details: any;
+}
+
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
 
 const AdminDashboard: React.FC = () => {
@@ -86,10 +95,13 @@ const AdminDashboard: React.FC = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [loading, setLoading] = useState(true);
   const [txLoading, setTxLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district' | 'contacts' | 'settings'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'registrations' | 'designation' | 'district' | 'contacts' | 'logs' | 'settings'>('overview');
   const [registrationCloseDate, setRegistrationCloseDate] = useState('2026-05-03');
   const [newCloseDate, setNewCloseDate] = useState('2026-05-03');
   const [savingSettings, setSavingSettings] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [logFilter, setLogFilter] = useState<{ level: string; category: string }>({ level: '', category: '' });
 
   const DESIGNATION_SHORT: Record<string, string> = {
     'President 2025-26': 'Pres\'26',
@@ -316,6 +328,34 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
+  const fetchLogs = async () => {
+    setLogsLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (logFilter.level) params.append('level', logFilter.level);
+      if (logFilter.category) params.append('category', logFilter.category);
+      params.append('limit', '200');
+      
+      const response = await fetch(`${API_URL}/admin/logs?${params}`);
+      const data = await response.json();
+      setLogs(data.logs || []);
+    } catch (error) {
+      console.error('Error fetching logs:', error);
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const clearOldLogs = async (days: number) => {
+    if (!window.confirm(`Delete logs older than ${days} days?`)) return;
+    try {
+      await fetch(`${API_URL}/admin/logs?days=${days}`, { method: 'DELETE' });
+      fetchLogs();
+    } catch (error) {
+      alert('Failed to clear logs');
+    }
+  };
+
   useEffect(() => {
     if (!sessionStorage.getItem('adminLoggedIn')) {
       navigate('/admin-login');
@@ -326,6 +366,12 @@ const AdminDashboard: React.FC = () => {
     fetchDistrictReport();
     fetchRegistrationCloseDate();
   }, [navigate]);
+
+  useEffect(() => {
+    if (activeTab === 'logs') {
+      fetchLogs();
+    }
+  }, [activeTab, logFilter]);
 
   useEffect(() => {
     if (isViewer && activeTab === 'overview') {
@@ -642,6 +688,18 @@ const AdminDashboard: React.FC = () => {
                 Contacts
               </button>
 */}
+              {!isViewer && (
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`px-6 py-4 text-sm font-medium ${
+                    activeTab === 'logs'
+                      ? 'border-b-2 border-blue-500 text-blue-600'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Logs
+                </button>
+              )}
               {!isViewer && (
                 <button
                   onClick={() => setActiveTab('settings')}
@@ -1139,6 +1197,87 @@ const AdminDashboard: React.FC = () => {
             )}
 
             {activeTab === 'contacts' && <DistrictContacts userRole={userRole} />}
+
+            {activeTab === 'logs' && !isViewer && (
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">System Logs</h2>
+                  <div className="flex items-center gap-3">
+                    <select
+                      value={logFilter.level}
+                      onChange={(e) => setLogFilter({ ...logFilter, level: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <option value="">All Levels</option>
+                      <option value="debug">Debug</option>
+                      <option value="info">Info</option>
+                      <option value="warn">Warning</option>
+                      <option value="error">Error</option>
+                    </select>
+                    <select
+                      value={logFilter.category}
+                      onChange={(e) => setLogFilter({ ...logFilter, category: e.target.value })}
+                      className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+                    >
+                      <option value="">All Categories</option>
+                      <option value="registration">Registration</option>
+                      <option value="registration-form">Registration Form</option>
+                      <option value="payment">Payment</option>
+                    </select>
+                    <button
+                      onClick={fetchLogs}
+                      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-blue-700"
+                    >
+                      Refresh
+                    </button>
+                    <button
+                      onClick={() => clearOldLogs(7)}
+                      className="bg-red-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-red-700"
+                    >
+                      Clear Old (7d)
+                    </button>
+                  </div>
+                </div>
+
+                {logsLoading ? (
+                  <div className="text-center py-8 text-gray-500">Loading logs...</div>
+                ) : logs.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">No logs found</div>
+                ) : (
+                  <div className="bg-gray-900 rounded-lg p-4 max-h-[600px] overflow-y-auto font-mono text-sm">
+                    {logs.map((log) => (
+                      <div
+                        key={log.id}
+                        className={`py-1 border-b border-gray-800 ${
+                          log.level === 'error' ? 'text-red-400' :
+                          log.level === 'warn' ? 'text-yellow-400' :
+                          log.level === 'info' ? 'text-green-400' :
+                          'text-gray-400'
+                        }`}
+                      >
+                        <span className="text-gray-500">{new Date(log.timestamp).toLocaleString()}</span>
+                        {' '}
+                        <span className={`uppercase font-bold ${
+                          log.level === 'error' ? 'text-red-500' :
+                          log.level === 'warn' ? 'text-yellow-500' :
+                          log.level === 'info' ? 'text-green-500' :
+                          'text-gray-500'
+                        }`}>[{log.level}]</span>
+                        {' '}
+                        <span className="text-blue-400">[{log.category}]</span>
+                        {' '}
+                        <span className="text-white">{log.message}</span>
+                        {log.details && (
+                          <div className="text-gray-500 pl-4 text-xs mt-1">
+                            {JSON.stringify(log.details, null, 2)}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {activeTab === 'settings' && !isViewer && (
               <div>
