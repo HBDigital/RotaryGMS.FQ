@@ -42,7 +42,7 @@ Event Details:
 Date: 24 May 2026
 Venue: KPR College of Arts Science and Research, Coimbatore
 
-For queries, contact us at info@rotary3206.org
+For queries, contact us: Rotary Club of Coimbatore Heritage
 
 Regards,
 Rotary District 3206
