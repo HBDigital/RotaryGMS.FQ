@@ -684,7 +684,8 @@ router.get('/admin/district-report', async (req, res) => {
     const clubs = await db.prepare(`
       SELECT
         c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone, c.participation_closed,
-        GROUP_CONCAT(DISTINCT d.delegate_designation) AS found_designations
+        GROUP_CONCAT(DISTINCT d.delegate_designation) AS found_designations,
+        COUNT(DISTINCT r.id) AS registration_count
       FROM clubs c
       LEFT JOIN registrations r ON r.payment_status = 'success' AND (
         r.club_name = c.name
@@ -734,7 +735,9 @@ router.get('/admin/district-report', async (req, res) => {
       const found = club.found_designations ? club.found_designations.split(',') : [];
       const missing = REQUIRED_DESIGNATIONS.filter(d => !found.includes(d));
       const isClosed = Number(club.participation_closed) === 1;
-      const status = found.length >= 2 ? 'completed' : found.length === 1 ? 'partial' : 'not_registered';
+      const hasRegistration = club.registration_count > 0;
+      // Status: 'completed' if has registration, 'not_registered' otherwise
+      const status = hasRegistration ? 'completed' : 'not_registered';
       zonesMap[zone].district_directors[dd].assistant_governors[ag].clubs.push({
         name: club.name,
         ggr: club.ggr,
@@ -742,6 +745,7 @@ router.get('/admin/district-report', async (req, res) => {
         participation_closed: isClosed,
         required_present: found,
         required_missing: missing,
+        registration_count: club.registration_count,
       });
     }
 
