@@ -173,6 +173,7 @@ const AdminDashboard: React.FC = () => {
     name: string; ggr: string | null; status: 'completed' | 'partial' | 'not_registered';
     participation_closed?: boolean;
     required_present: string[]; required_missing: string[];
+    registration_count?: number; total_delegates?: number;
   }
   interface AG { name: string; phone: string | null; reminder_sent_today: boolean; total: number; completed: number; partial: number; not_registered: number; clubs: DistrictClub[]; }
   interface DD { name: string; assistant_governors: AG[]; }
@@ -955,7 +956,7 @@ const AdminDashboard: React.FC = () => {
                                                   : 'bg-red-100 text-red-700'
                                               }`}
                                             >
-                                              {club.name} ({club.required_present.length})
+                                              {club.name} ({club.total_delegates || 0})
                                             </span>
                                           ))}
                                         </div>

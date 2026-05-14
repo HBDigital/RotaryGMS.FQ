@@ -685,7 +685,8 @@ router.get('/admin/district-report', async (req, res) => {
       SELECT
         c.id, c.name, c.zone, c.district_director, c.assistant_governor, c.ggr, c.ag_phone, c.participation_closed,
         GROUP_CONCAT(DISTINCT d.delegate_designation) AS found_designations,
-        COUNT(DISTINCT r.id) AS registration_count
+        COUNT(DISTINCT r.id) AS registration_count,
+        COALESCE(SUM(r.delegate_count), 0) AS total_delegates
       FROM clubs c
       LEFT JOIN registrations r ON r.payment_status = 'success' AND (
         r.club_name = c.name
@@ -746,6 +747,7 @@ router.get('/admin/district-report', async (req, res) => {
         required_present: found,
         required_missing: missing,
         registration_count: club.registration_count,
+        total_delegates: club.total_delegates || 0,
       });
     }
 
