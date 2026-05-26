@@ -480,7 +480,30 @@ router.get('/admin/export-excel', async (req, res) => {
         SELECT delegate_name, delegate_designation FROM delegates WHERE registration_id = ?
       `).all(reg.id);
 
-      delegates.forEach((delegate, index) => {
+      if (delegates.length > 0) {
+        delegates.forEach((delegate, index) => {
+          rows.push({
+            'Receipt No': reg.receipt_no || '',
+            'Reg ID': reg.id,
+            'Name': reg.name,
+            'Email': reg.email,
+            'Phone': reg.phone,
+            'Club Name': reg.club_name,
+            'Total Delegates': reg.delegate_count,
+            'Amount (₹)': reg.total_amount,
+            'Payment Status': reg.payment_status,
+            'Email Status': reg.email_status || 'pending',
+            'WhatsApp Status': reg.whatsapp_status || 'pending',
+            'Razorpay Order ID': reg.razorpay_order_id || '',
+            'Razorpay Payment ID': reg.razorpay_payment_id || '',
+            'Registration Date': reg.created_at,
+            'Delegate #': index + 1,
+            'Delegate Name': delegate.delegate_name,
+            'Delegate Designation': delegate.delegate_designation,
+          });
+        });
+      } else {
+        // Include registration even if no delegate rows
         rows.push({
           'Receipt No': reg.receipt_no || '',
           'Reg ID': reg.id,
@@ -496,47 +519,32 @@ router.get('/admin/export-excel', async (req, res) => {
           'Razorpay Order ID': reg.razorpay_order_id || '',
           'Razorpay Payment ID': reg.razorpay_payment_id || '',
           'Registration Date': reg.created_at,
-          'Delegate #': index + 1,
-          'Delegate Name': delegate.delegate_name,
-          'Delegate Designation': delegate.delegate_designation,
+          'Delegate #': '',
+          'Delegate Name': '',
+          'Delegate Designation': '',
         });
-      });
+      }
     }
+
+    const HEADERS = [
+      'Receipt No', 'Reg ID', 'Name', 'Email', 'Phone', 'Club Name',
+      'Total Delegates', 'Amount (₹)', 'Payment Status', 'Email Status',
+      'WhatsApp Status', 'Razorpay Order ID', 'Razorpay Payment ID',
+      'Registration Date', 'Delegate #', 'Delegate Name', 'Delegate Designation',
+    ];
 
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Registrations');
-    const headers = Object.keys(rows[0] || {
-      'Receipt No': '',
-      'Reg ID': '',
-      'Name': '',
-      'Email': '',
-      'Phone': '',
-      'Club Name': '',
-      'Total Delegates': '',
-      'Amount (₹)': '',
-      'Payment Status': '',
-      'Email Status': '',
-      'WhatsApp Status': '',
-      'Razorpay Order ID': '',
-      'Razorpay Payment ID': '',
-      'Registration Date': '',
-      'Delegate #': '',
-      'Delegate Name': '',
-      'Delegate Designation': '',
-    });
 
-    sheet.addRow(headers);
+    sheet.addRow(HEADERS);
     rows.forEach((row) => {
-      sheet.addRow(headers.map((h) => row[h] ?? ''));
+      sheet.addRow(HEADERS.map((h) => row[h] ?? ''));
     });
 
-    headers.forEach((header, index) => {
+    HEADERS.forEach((header, index) => {
       const col = sheet.getColumn(index + 1);
-      const maxLen = Math.max(
-        String(header).length,
-        ...rows.map((r) => String(r[header] ?? '').length)
-      );
-      col.width = Math.min(maxLen + 2, 60);
+      const colValues = rows.map((r) => String(r[header] ?? '').length);
+      col.width = Math.min(Math.max(header.length, ...(colValues.length ? colValues : [0])) + 2, 60);
     });
 
     const buffer = await workbook.xlsx.writeBuffer();

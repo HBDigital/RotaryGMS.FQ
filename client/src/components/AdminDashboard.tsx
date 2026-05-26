@@ -486,7 +486,12 @@ const AdminDashboard: React.FC = () => {
 
   const handleExportExcel = async () => {
     try {
-      const blob = await fetch(`${API_URL}/admin/export-excel`).then(r => r.blob());
+      const res = await fetch(`${API_URL}/admin/export-excel`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+      const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -494,9 +499,10 @@ const AdminDashboard: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       link.remove();
-    } catch (error) {
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
       console.error('Error exporting Excel:', error);
-      alert('Failed to export Excel');
+      alert(`Failed to export Excel: ${error?.message || 'Unknown error'}`);
     }
   };
 
